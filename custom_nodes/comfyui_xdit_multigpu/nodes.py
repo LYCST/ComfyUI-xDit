@@ -19,8 +19,7 @@ import folder_paths
 import comfy.utils
 import comfy.sd
 
-# Import our xDiT integration and runtime
-from .xdit_integration import xdit_manager, XDiTModelLoader, XDiTGenerator
+# Import our xDiT runtime
 from .xdit_runtime import XDiTDispatcher, SchedulingStrategy
 
 # Try to import xDiT
