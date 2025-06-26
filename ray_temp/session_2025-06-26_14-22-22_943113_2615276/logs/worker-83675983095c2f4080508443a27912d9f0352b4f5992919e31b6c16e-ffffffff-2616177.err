@@ -1,0 +1,5 @@
+:job_id:01000000
+:actor_name:XDiTWorker
+I0626 14:22:32.191000 2616177 site-packages/torch/distributed/distributed_c10d.py:415] Using backend config: {'cuda': 'nccl'}
+[GPU 0] Direct safetensors loading failed: The provided pretrained_model_name_or_path "/home/shuzuan/prj/ComfyUI-xDit/models/unet/flux/flux1-dev.safetensors" is neither a valid local path nor a valid repo id. Please check the parameter.
+⚠️ Pipeline creation failed on GPU 0

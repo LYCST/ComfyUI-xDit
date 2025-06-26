@@ -1,0 +1,172 @@
+[2025-06-26 11:08:57,118 I 2438990 2438990] (gcs_server) gcs_server_main.cc:91: Ray cluster metadata ray_version=2.47.1 ray_commit=61d3f2f1aa33563faa398105f4abda88cb39440b
+[2025-06-26 11:08:57,119 I 2438990 2438990] (gcs_server) io_service_pool.cc:36: IOServicePool is running with 1 io_service.
+[2025-06-26 11:08:57,124 I 2438990 2438990] (gcs_server) event.cc:500: Ray Event initialized for GCS
+[2025-06-26 11:08:57,125 I 2438990 2438990] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_NODE
+[2025-06-26 11:08:57,125 I 2438990 2438990] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_ACTOR
+[2025-06-26 11:08:57,125 I 2438990 2438990] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_DRIVER_JOB
+[2025-06-26 11:08:57,125 I 2438990 2438990] (gcs_server) event.cc:331: Set ray event level to warning
+[2025-06-26 11:08:57,127 I 2438990 2438990] (gcs_server) gcs_server.cc:77: GCS storage type is StorageType::IN_MEMORY
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:46: Loading job table data.
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:56: Loading node table data.
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:78: Loading actor table data.
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:89: Loading actor task spec table data.
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:66: Loading placement group table data.
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:50: Finished loading job table data, size = 0
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:60: Finished loading node table data, size = 0
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:83: Finished loading actor table data, size = 0
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:94: Finished loading actor task spec table data, size = 0
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_init_data.cc:72: Finished loading placement group table data, size = 0
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_server.cc:161: No existing server cluster ID found. Generating new ID: b0b1b9aafa3a72eddc0251724af77c4e7c33009c72d7429330c47f2b
+[2025-06-26 11:08:57,128 I 2438990 2438990] (gcs_server) gcs_server.cc:673: Autoscaler V2 enabled: 0
+[2025-06-26 11:08:57,131 I 2438990 2438990] (gcs_server) grpc_server.cc:141: GcsServer server started, listening on port 63101.
+[2025-06-26 11:08:57,398 I 2438990 2438990] (gcs_server) gcs_server.cc:249: Gcs Debug state:
+
+GcsNodeManager: 
+- RegisterNode request count: 0
+- DrainNode request count: 0
+- GetAllNodeInfo request count: 0
+
+GcsActorManager: 
+- RegisterActor request count: 0
+- CreateActor request count: 0
+- GetActorInfo request count: 0
+- GetNamedActorInfo request count: 0
+- GetAllActorInfo request count: 0
+- KillActor request count: 0
+- ListNamedActors request count: 0
+- Registered actors count: 0
+- Destroyed actors count: 0
+- Named actors count: 0
+- Unresolved actors count: 0
+- Pending actors count: 0
+- Created actors count: 0
+- owners_: 0
+- actor_to_register_callbacks_: 0
+- actor_to_restart_for_lineage_reconstruction_callbacks_: 0
+- actor_to_create_callbacks_: 0
+- sorted_destroyed_actor_list_: 0
+
+GcsResourceManager: 
+- GetAllAvailableResources request count: 0
+- GetAllTotalResources request count: 0
+- GetAllResourceUsage request count: 0
+
+GcsPlacementGroupManager: 
+- CreatePlacementGroup request count: 0
+- RemovePlacementGroup request count: 0
+- GetPlacementGroup request count: 0
+- GetAllPlacementGroup request count: 0
+- WaitPlacementGroupUntilReady request count: 0
+- GetNamedPlacementGroup request count: 0
+- Scheduling pending placement group count: 0
+- Registered placement groups count: 0
+- Named placement group count: 0
+- Pending placement groups count: 0
+- Infeasible placement groups count: 0
+
+Publisher:
+
+[runtime env manager] ID to URIs table:
+[runtime env manager] URIs reference table:
+
+GcsTaskManager: 
+-Total num task events reported: 0
+-Total num status task events dropped: 0
+-Total num profile events dropped: 0
+-Current num of task events stored: 0
+-Total num of actor creation tasks: 0
+-Total num of actor tasks: 0
+-Total num of normal tasks: 0
+-Total num of driver tasks: 0
+
+GcsAutoscalerStateManager: 
+- last_seen_autoscaler_state_version_: 0
+- last_cluster_resource_state_version_: 0
+- pending demands:
+
+
+
+[2025-06-26 11:08:57,398 I 2438990 2438990] (gcs_server) gcs_server.cc:870: Main service Event stats:
+
+
+Global stats: 27 total (5 active)
+Queueing time: mean = 89.842 ms, max = 268.924 ms, min = 105.000 ns, total = 2.426 s
+Execution time:  mean = 19.972 ms, total = 539.231 ms
+Event stats:
+	GcsInMemoryStore.Put - 9 total (0 active), Execution time: mean = 29.884 ms, total = 268.952 ms, Queueing time: mean = 208.593 ms, max = 268.427 ms, min = 2.724 us, total = 1.877 s
+	GcsInMemoryStore.GetAll - 5 total (0 active), Execution time: mean = 11.768 us, total = 58.840 us, Queueing time: mean = 45.763 us, max = 49.782 us, min = 40.413 us, total = 228.817 us
+	PeriodicalRunner.RunFnPeriodically - 4 total (2 active, 1 running), Execution time: mean = 1.451 us, total = 5.804 us, Queueing time: mean = 134.435 ms, max = 268.924 ms, min = 268.816 ms, total = 537.740 ms
+	event_loop_lag_probe - 2 total (0 active), Execution time: mean = 7.761 us, total = 15.523 us, Queueing time: mean = 4.659 ms, max = 9.248 ms, min = 71.336 us, total = 9.319 ms
+	NodeInfoGcsService.grpc_server.GetClusterId - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	NodeInfoGcsService.grpc_server.GetClusterId.HandleRequestImpl - 1 total (0 active), Execution time: mean = 1.243 ms, total = 1.243 ms, Queueing time: mean = 1.092 ms, max = 1.092 ms, min = 1.092 ms, total = 1.092 ms
+	GcsInMemoryStore.Get - 1 total (0 active), Execution time: mean = 14.949 us, total = 14.949 us, Queueing time: mean = 19.203 us, max = 19.203 us, min = 19.203 us, total = 19.203 us
+	GcsInitData::AsyncLoad - 1 total (0 active), Execution time: mean = 10.488 us, total = 10.488 us, Queueing time: mean = 337.000 ns, max = 337.000 ns, min = 337.000 ns, total = 337.000 ns
+	GcsServer.GetOrGenerateClusterId.continuation - 1 total (0 active), Execution time: mean = 268.930 ms, total = 268.930 ms, Queueing time: mean = 105.000 ns, max = 105.000 ns, min = 105.000 ns, total = 105.000 ns
+	ClusterResourceManager.ResetRemoteNodeView - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	RayletLoadPulled - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 11:08:57,398 I 2438990 2438990] (gcs_server) gcs_server.cc:874: task_io_context Event stats:
+
+
+Global stats: 5 total (1 active)
+Queueing time: mean = 52.988 us, max = 220.873 us, min = 5.018 us, total = 264.942 us
+Execution time:  mean = 40.569 us, total = 202.846 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 66.327 us, total = 198.980 us, Queueing time: mean = 82.807 us, max = 220.873 us, min = 5.018 us, total = 248.420 us
+	PeriodicalRunner.RunFnPeriodically - 1 total (0 active), Execution time: mean = 3.866 us, total = 3.866 us, Queueing time: mean = 16.522 us, max = 16.522 us, min = 16.522 us, total = 16.522 us
+	GcsTaskManager.GcJobSummary - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 11:08:57,398 I 2438990 2438990] (gcs_server) gcs_server.cc:874: pubsub_io_context Event stats:
+
+
+Global stats: 5 total (1 active)
+Queueing time: mean = 53.242 us, max = 219.894 us, min = 4.465 us, total = 266.210 us
+Execution time:  mean = 36.773 us, total = 183.864 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 59.604 us, total = 178.812 us, Queueing time: mean = 82.589 us, max = 219.894 us, min = 4.465 us, total = 247.766 us
+	PeriodicalRunner.RunFnPeriodically - 1 total (0 active), Execution time: mean = 5.052 us, total = 5.052 us, Queueing time: mean = 18.444 us, max = 18.444 us, min = 18.444 us, total = 18.444 us
+	Publisher.CheckDeadSubscribers - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 11:08:57,398 I 2438990 2438990] (gcs_server) gcs_server.cc:874: ray_syncer_io_context Event stats:
+
+
+Global stats: 5 total (0 active)
+Queueing time: mean = 76.088 us, max = 297.639 us, min = 7.969 us, total = 380.440 us
+Execution time:  mean = 39.559 us, total = 197.794 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 65.513 us, total = 196.539 us, Queueing time: mean = 114.851 us, max = 297.639 us, min = 7.969 us, total = 344.554 us
+	RaySyncerRegister - 2 total (0 active), Execution time: mean = 627.500 ns, total = 1.255 us, Queueing time: mean = 17.943 us, max = 21.233 us, min = 14.653 us, total = 35.886 us
+
+
+[2025-06-26 11:08:58,366 I 2438990 2438990] (gcs_server) gcs_node_manager.cc:92: Registering node info, address = 192.168.10.101, node name = 192.168.10.101 node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:08:58,366 I 2438990 2438990] (gcs_server) gcs_node_manager.cc:98: Finished registering node info, address = 192.168.10.101, node name = 192.168.10.101, is_head_node = 1 node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:08:58,367 I 2438990 2438990] (gcs_server) gcs_placement_group_mgr.cc:851: A new node: c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0 registered, will try to reschedule all the infeasible placement groups.
+[2025-06-26 11:08:58,370 I 2438990 2439071] (gcs_server) ray_syncer.cc:244: Get connection node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:08:59,438 I 2438990 2438990] (gcs_server) gcs_job_manager.cc:97: Adding job, job id = 01000000, driver pid = 2438770
+[2025-06-26 11:08:59,438 I 2438990 2438990] (gcs_server) gcs_job_manager.cc:118: Finished adding job, job id = 01000000, driver pid = 2438770
+[2025-06-26 11:08:59,522 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:08:59,523 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:08:59,525 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:08:59,525 I 2438990 2438990] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0 for actor 16b25a54ed93b695efcbbbb801000000, job id = 01000000
+[2025-06-26 11:08:59,526 I 2438990 2438990] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0 for actor 16b25a54ed93b695efcbbbb801000000, job id = 01000000
+[2025-06-26 11:08:59,526 I 2438990 2438990] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 16b25a54ed93b695efcbbbb801000000 on worker 24f35bcede52e1c3876bc15ea17f8eba21ca7d60fae751bb064630a6 at node c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0, job id = 01000000
+[2025-06-26 11:09:04,289 I 2438990 2438990] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 16b25a54ed93b695efcbbbb801000000 on worker 24f35bcede52e1c3876bc15ea17f8eba21ca7d60fae751bb064630a6 at node c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0, job id = 01000000
+[2025-06-26 11:09:04,289 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:09:04,289 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:09:04,422 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=16b25a54ed93b695efcbbbb801000000
+[2025-06-26 11:09:04,423 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:1047: Worker 01000000ffffffffffffffffffffffffffffffffffffffffffffffff failed, destroying actor child, job id = 01000000
+[2025-06-26 11:09:04,423 I 2438990 2438990] (gcs_server) gcs_job_manager.cc:156: Finished marking job state, job id = 01000000
+[2025-06-26 11:09:04,476 I 2438990 2438990] (gcs_server) gcs_node_manager.cc:386: Removing node, node name = 192.168.10.101, death reason = EXPECTED_TERMINATION, death message = received SIGTERM node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,477 I 2438990 2438990] (gcs_server) gcs_placement_group_mgr.cc:802: Node is dead, rescheduling the placement groups on the dead node. node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,477 I 2438990 2438990] (gcs_server) gcs_actor_manager.cc:1325: Node is dead, reconstructing actors. node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,477 I 2438990 2438990] (gcs_server) gcs_job_manager.cc:478: Node is dead, mark all jobs from this node as finished node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,697 I 2438990 2439039] (gcs_server) ray_syncer_bidi_reactor_base.h:182: Failed to read the message from: c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,697 I 2438990 2439039] (gcs_server) ray_syncer.cc:241: Connection is broken. node_id=c0f4dd16a46513a13702876560cc37f02405a337b8825b8365bf9cd0
+[2025-06-26 11:09:04,748 I 2438990 2438990] (gcs_server) gcs_server_main.cc:172: GCS server received SIGTERM, shutting down...
+[2025-06-26 11:09:04,749 I 2438990 2438990] (gcs_server) gcs_server.cc:271: Stopping GCS server.
+[2025-06-26 11:09:04,804 I 2438990 2438990] (gcs_server) gcs_server.cc:288: GCS server stopped.
+[2025-06-26 11:09:04,804 I 2438990 2438990] (gcs_server) io_service_pool.cc:48: IOServicePool is stopped.
+[2025-06-26 11:09:04,830 I 2438990 2438990] (gcs_server) stats.h:120: Stats module has shutdown.

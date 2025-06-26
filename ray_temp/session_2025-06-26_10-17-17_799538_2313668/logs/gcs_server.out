@@ -1,0 +1,264 @@
+[2025-06-26 10:17:17,836 I 2313871 2313871] (gcs_server) gcs_server_main.cc:91: Ray cluster metadata ray_version=2.47.1 ray_commit=61d3f2f1aa33563faa398105f4abda88cb39440b
+[2025-06-26 10:17:17,836 I 2313871 2313871] (gcs_server) io_service_pool.cc:36: IOServicePool is running with 1 io_service.
+[2025-06-26 10:17:17,841 I 2313871 2313871] (gcs_server) event.cc:500: Ray Event initialized for GCS
+[2025-06-26 10:17:17,841 I 2313871 2313871] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_NODE
+[2025-06-26 10:17:17,841 I 2313871 2313871] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_ACTOR
+[2025-06-26 10:17:17,841 I 2313871 2313871] (gcs_server) event.cc:500: Ray Event initialized for EXPORT_DRIVER_JOB
+[2025-06-26 10:17:17,841 I 2313871 2313871] (gcs_server) event.cc:331: Set ray event level to warning
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_server.cc:77: GCS storage type is StorageType::IN_MEMORY
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:46: Loading job table data.
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:56: Loading node table data.
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:78: Loading actor table data.
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:89: Loading actor task spec table data.
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:66: Loading placement group table data.
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:50: Finished loading job table data, size = 0
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:60: Finished loading node table data, size = 0
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:83: Finished loading actor table data, size = 0
+[2025-06-26 10:17:17,843 I 2313871 2313871] (gcs_server) gcs_init_data.cc:94: Finished loading actor task spec table data, size = 0
+[2025-06-26 10:17:17,844 I 2313871 2313871] (gcs_server) gcs_init_data.cc:72: Finished loading placement group table data, size = 0
+[2025-06-26 10:17:17,844 I 2313871 2313871] (gcs_server) gcs_server.cc:161: No existing server cluster ID found. Generating new ID: c14fa347594499c8b15b4c7ab8a1c4bc3ff2ea0526ae8cb05ccf9e81
+[2025-06-26 10:17:17,844 I 2313871 2313871] (gcs_server) gcs_server.cc:673: Autoscaler V2 enabled: 0
+[2025-06-26 10:17:17,845 I 2313871 2313871] (gcs_server) grpc_server.cc:141: GcsServer server started, listening on port 37327.
+[2025-06-26 10:17:18,103 I 2313871 2313871] (gcs_server) gcs_server.cc:249: Gcs Debug state:
+
+GcsNodeManager: 
+- RegisterNode request count: 0
+- DrainNode request count: 0
+- GetAllNodeInfo request count: 0
+
+GcsActorManager: 
+- RegisterActor request count: 0
+- CreateActor request count: 0
+- GetActorInfo request count: 0
+- GetNamedActorInfo request count: 0
+- GetAllActorInfo request count: 0
+- KillActor request count: 0
+- ListNamedActors request count: 0
+- Registered actors count: 0
+- Destroyed actors count: 0
+- Named actors count: 0
+- Unresolved actors count: 0
+- Pending actors count: 0
+- Created actors count: 0
+- owners_: 0
+- actor_to_register_callbacks_: 0
+- actor_to_restart_for_lineage_reconstruction_callbacks_: 0
+- actor_to_create_callbacks_: 0
+- sorted_destroyed_actor_list_: 0
+
+GcsResourceManager: 
+- GetAllAvailableResources request count: 0
+- GetAllTotalResources request count: 0
+- GetAllResourceUsage request count: 0
+
+GcsPlacementGroupManager: 
+- CreatePlacementGroup request count: 0
+- RemovePlacementGroup request count: 0
+- GetPlacementGroup request count: 0
+- GetAllPlacementGroup request count: 0
+- WaitPlacementGroupUntilReady request count: 0
+- GetNamedPlacementGroup request count: 0
+- Scheduling pending placement group count: 0
+- Registered placement groups count: 0
+- Named placement group count: 0
+- Pending placement groups count: 0
+- Infeasible placement groups count: 0
+
+Publisher:
+
+[runtime env manager] ID to URIs table:
+[runtime env manager] URIs reference table:
+
+GcsTaskManager: 
+-Total num task events reported: 0
+-Total num status task events dropped: 0
+-Total num profile events dropped: 0
+-Current num of task events stored: 0
+-Total num of actor creation tasks: 0
+-Total num of actor tasks: 0
+-Total num of normal tasks: 0
+-Total num of driver tasks: 0
+
+GcsAutoscalerStateManager: 
+- last_seen_autoscaler_state_version_: 0
+- last_cluster_resource_state_version_: 0
+- pending demands:
+
+
+
+[2025-06-26 10:17:18,103 I 2313871 2313871] (gcs_server) gcs_server.cc:870: Main service Event stats:
+
+
+Global stats: 27 total (5 active)
+Queueing time: mean = 86.155 ms, max = 257.910 ms, min = 76.000 ns, total = 2.326 s
+Execution time:  mean = 19.152 ms, total = 517.115 ms
+Event stats:
+	GcsInMemoryStore.Put - 9 total (0 active), Execution time: mean = 28.659 ms, total = 257.928 ms, Queueing time: mean = 200.201 ms, max = 257.551 ms, min = 1.660 us, total = 1.802 s
+	GcsInMemoryStore.GetAll - 5 total (0 active), Execution time: mean = 8.092 us, total = 40.462 us, Queueing time: mean = 30.330 us, max = 35.918 us, min = 26.426 us, total = 151.650 us
+	PeriodicalRunner.RunFnPeriodically - 4 total (2 active, 1 running), Execution time: mean = 1.389 us, total = 5.555 us, Queueing time: mean = 128.935 ms, max = 257.910 ms, min = 257.832 ms, total = 515.742 ms
+	event_loop_lag_probe - 2 total (0 active), Execution time: mean = 6.336 us, total = 12.672 us, Queueing time: mean = 3.816 ms, max = 7.583 ms, min = 49.028 us, total = 7.632 ms
+	GcsInMemoryStore.Get - 1 total (0 active), Execution time: mean = 9.719 us, total = 9.719 us, Queueing time: mean = 14.795 us, max = 14.795 us, min = 14.795 us, total = 14.795 us
+	NodeInfoGcsService.grpc_server.GetClusterId.HandleRequestImpl - 1 total (0 active), Execution time: mean = 1.203 ms, total = 1.203 ms, Queueing time: mean = 847.609 us, max = 847.609 us, min = 847.609 us, total = 847.609 us
+	GcsInitData::AsyncLoad - 1 total (0 active), Execution time: mean = 6.974 us, total = 6.974 us, Queueing time: mean = 199.000 ns, max = 199.000 ns, min = 199.000 ns, total = 199.000 ns
+	GcsServer.GetOrGenerateClusterId.continuation - 1 total (0 active), Execution time: mean = 257.908 ms, total = 257.908 ms, Queueing time: mean = 76.000 ns, max = 76.000 ns, min = 76.000 ns, total = 76.000 ns
+	ClusterResourceManager.ResetRemoteNodeView - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	RayletLoadPulled - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	NodeInfoGcsService.grpc_server.GetClusterId - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 10:17:18,103 I 2313871 2313871] (gcs_server) gcs_server.cc:874: task_io_context Event stats:
+
+
+Global stats: 5 total (1 active)
+Queueing time: mean = 50.455 us, max = 207.348 us, min = 4.553 us, total = 252.273 us
+Execution time:  mean = 30.908 us, total = 154.540 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 49.924 us, total = 149.772 us, Queueing time: mean = 77.086 us, max = 207.348 us, min = 4.553 us, total = 231.258 us
+	PeriodicalRunner.RunFnPeriodically - 1 total (0 active), Execution time: mean = 4.768 us, total = 4.768 us, Queueing time: mean = 21.015 us, max = 21.015 us, min = 21.015 us, total = 21.015 us
+	GcsTaskManager.GcJobSummary - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 10:17:18,103 I 2313871 2313871] (gcs_server) gcs_server.cc:874: pubsub_io_context Event stats:
+
+
+Global stats: 5 total (1 active)
+Queueing time: mean = 59.622 us, max = 251.712 us, min = 4.322 us, total = 298.109 us
+Execution time:  mean = 34.449 us, total = 172.244 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 53.678 us, total = 161.035 us, Queueing time: mean = 92.128 us, max = 251.712 us, min = 4.322 us, total = 276.384 us
+	PeriodicalRunner.RunFnPeriodically - 1 total (0 active), Execution time: mean = 11.209 us, total = 11.209 us, Queueing time: mean = 21.725 us, max = 21.725 us, min = 21.725 us, total = 21.725 us
+	Publisher.CheckDeadSubscribers - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+
+
+[2025-06-26 10:17:18,103 I 2313871 2313871] (gcs_server) gcs_server.cc:874: ray_syncer_io_context Event stats:
+
+
+Global stats: 5 total (0 active)
+Queueing time: mean = 83.083 us, max = 341.082 us, min = 4.504 us, total = 415.416 us
+Execution time:  mean = 30.607 us, total = 153.034 us
+Event stats:
+	event_loop_lag_probe - 3 total (0 active), Execution time: mean = 50.460 us, total = 151.380 us, Queueing time: mean = 125.543 us, max = 341.082 us, min = 4.504 us, total = 376.629 us
+	RaySyncerRegister - 2 total (0 active), Execution time: mean = 827.000 ns, total = 1.654 us, Queueing time: mean = 19.393 us, max = 22.291 us, min = 16.496 us, total = 38.787 us
+
+
+[2025-06-26 10:17:19,092 I 2313871 2313871] (gcs_server) gcs_node_manager.cc:92: Registering node info, address = 192.168.10.101, node name = 192.168.10.101 node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:19,093 I 2313871 2313871] (gcs_server) gcs_node_manager.cc:98: Finished registering node info, address = 192.168.10.101, node name = 192.168.10.101, is_head_node = 1 node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:19,093 I 2313871 2313871] (gcs_server) gcs_placement_group_mgr.cc:851: A new node: 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 registered, will try to reschedule all the infeasible placement groups.
+[2025-06-26 10:17:19,096 I 2313871 2313959] (gcs_server) ray_syncer.cc:244: Get connection node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:20,155 I 2313871 2313871] (gcs_server) gcs_job_manager.cc:97: Adding job, job id = 01000000, driver pid = 2313668
+[2025-06-26 10:17:20,155 I 2313871 2313871] (gcs_server) gcs_job_manager.cc:118: Finished adding job, job id = 01000000, driver pid = 2313668
+[2025-06-26 10:17:20,233 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:20,233 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:20,235 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:20,235 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 39dce1b842486c0b6fe1b98601000000, job id = 01000000
+[2025-06-26 10:17:20,236 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 39dce1b842486c0b6fe1b98601000000, job id = 01000000
+[2025-06-26 10:17:20,236 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 39dce1b842486c0b6fe1b98601000000 on worker ac41e073cac8754021c14ff94daa7595928bcd5ff811762e53af56a5 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:24,951 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 39dce1b842486c0b6fe1b98601000000 on worker ac41e073cac8754021c14ff94daa7595928bcd5ff811762e53af56a5 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:24,951 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:24,951 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:24,955 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:24,955 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:24,955 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:24,956 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 0ec2680fc2212ce08acf5d2701000000, job id = 01000000
+[2025-06-26 10:17:24,956 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 0ec2680fc2212ce08acf5d2701000000, job id = 01000000
+[2025-06-26 10:17:24,956 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 0ec2680fc2212ce08acf5d2701000000 on worker 8cd79299cae046546268dc3893d26af34dd8f8afcf0c016b56e73e30 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:27,850 W 2313871 2313902] (gcs_server) metric_exporter.cc:105: [1] Export metrics to agent failed: RpcError: RPC Error message: failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:62137: Failed to connect to remote host: Connection refused; RPC Error details:  rpc_code: 14. This won't affect Ray, but you can lose metrics from the cluster.
+[2025-06-26 10:17:29,695 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 0ec2680fc2212ce08acf5d2701000000 on worker 8cd79299cae046546268dc3893d26af34dd8f8afcf0c016b56e73e30 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:29,695 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:29,695 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:29,699 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:29,699 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:29,699 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:29,699 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 82c87a1717c631f396841a3001000000, job id = 01000000
+[2025-06-26 10:17:29,700 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 82c87a1717c631f396841a3001000000, job id = 01000000
+[2025-06-26 10:17:29,700 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 82c87a1717c631f396841a3001000000 on worker 3b784dc71beae9632e99b4a81a2776063e9beff33c540ab1f64c772d at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:34,791 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 82c87a1717c631f396841a3001000000 on worker 3b784dc71beae9632e99b4a81a2776063e9beff33c540ab1f64c772d at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:34,791 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:34,791 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:34,794 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:34,795 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:34,795 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:34,795 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 9af2779391ac33224e52b1b401000000, job id = 01000000
+[2025-06-26 10:17:34,796 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 9af2779391ac33224e52b1b401000000, job id = 01000000
+[2025-06-26 10:17:34,796 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 9af2779391ac33224e52b1b401000000 on worker 045f300bf00fb8d427364df03ab5828d8c3d1a7a1c1efe6b892b46f8 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:39,601 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 9af2779391ac33224e52b1b401000000 on worker 045f300bf00fb8d427364df03ab5828d8c3d1a7a1c1efe6b892b46f8 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:39,601 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:39,602 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:39,605 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:39,605 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:39,606 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:39,606 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 19b03e8dda65584014e3af9001000000, job id = 01000000
+[2025-06-26 10:17:39,607 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 19b03e8dda65584014e3af9001000000, job id = 01000000
+[2025-06-26 10:17:39,607 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 19b03e8dda65584014e3af9001000000 on worker 6e8d8dafb56eab8daeb2ed9e0a1ff4bb186a8a164d3d917656592af4 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:44,367 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 19b03e8dda65584014e3af9001000000 on worker 6e8d8dafb56eab8daeb2ed9e0a1ff4bb186a8a164d3d917656592af4 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:44,367 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:44,368 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:44,370 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:44,371 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:44,371 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:44,371 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 1f7ab1c4d5f6405e4043c61201000000, job id = 01000000
+[2025-06-26 10:17:44,372 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 1f7ab1c4d5f6405e4043c61201000000, job id = 01000000
+[2025-06-26 10:17:44,372 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 1f7ab1c4d5f6405e4043c61201000000 on worker 9f74bbaad1fb1f721f17ae3e421c137c408b9bb95611037e36015bf9 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:49,046 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 1f7ab1c4d5f6405e4043c61201000000 on worker 9f74bbaad1fb1f721f17ae3e421c137c408b9bb95611037e36015bf9 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:49,046 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:49,047 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:49,050 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:49,050 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:49,050 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:49,051 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 8e780aa9c084066b4632b62d01000000, job id = 01000000
+[2025-06-26 10:17:49,051 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 8e780aa9c084066b4632b62d01000000, job id = 01000000
+[2025-06-26 10:17:49,052 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 8e780aa9c084066b4632b62d01000000 on worker 904ed0f0ca72396ff50913c3b5f488d64a57798e33fd99fde3050e5d at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:53,656 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 8e780aa9c084066b4632b62d01000000 on worker 904ed0f0ca72396ff50913c3b5f488d64a57798e33fd99fde3050e5d at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:53,656 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:53,657 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:53,660 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:403: Registering actor job_id=01000000 actor_id=306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:53,660 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:408: Registered actor, job id = 01000000, actor id = 306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:53,660 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:515: Creating actor job_id=01000000 actor_id=306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:53,661 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:318: Start leasing worker from node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 306b56b986db3031b8a501b601000000, job id = 01000000
+[2025-06-26 10:17:53,661 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:642: Finished leasing worker from 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9 for actor 306b56b986db3031b8a501b601000000, job id = 01000000
+[2025-06-26 10:17:53,661 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:454: Start creating actor 306b56b986db3031b8a501b601000000 on worker 6b9e0405fb7e69b3d0571eacdac75722051e463a55a8b5aa3549e458 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:58,267 I 2313871 2313871] (gcs_server) gcs_actor_scheduler.cc:491: Finished actor creation task for actor 306b56b986db3031b8a501b601000000 on worker 6b9e0405fb7e69b3d0571eacdac75722051e463a55a8b5aa3549e458 at node 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9, job id = 01000000
+[2025-06-26 10:17:58,267 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1586: Actor created successfully job_id=01000000 actor_id=306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:58,267 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:530: Finished creating actor. Status: OK job_id=01000000 actor_id=306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:58,280 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 39dce1b842486c0b6fe1b98601000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=39dce1b842486c0b6fe1b98601000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 0ec2680fc2212ce08acf5d2701000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=0ec2680fc2212ce08acf5d2701000000
+[2025-06-26 10:17:58,281 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 82c87a1717c631f396841a3001000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=82c87a1717c631f396841a3001000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 9af2779391ac33224e52b1b401000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=9af2779391ac33224e52b1b401000000
+[2025-06-26 10:17:58,282 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 19b03e8dda65584014e3af9001000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=19b03e8dda65584014e3af9001000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 1f7ab1c4d5f6405e4043c61201000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=1f7ab1c4d5f6405e4043c61201000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1051: Actor 8e780aa9c084066b4632b62d01000000 has no references, destroying actor, job id = 01000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:58,283 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1077: Tried to destroy actor that does not exist actor_id=8e780aa9c084066b4632b62d01000000
+[2025-06-26 10:17:58,304 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1072: Destroying actor job_id=01000000 actor_id=306b56b986db3031b8a501b601000000
+[2025-06-26 10:17:58,306 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1047: Worker 01000000ffffffffffffffffffffffffffffffffffffffffffffffff failed, destroying actor child, job id = 01000000
+[2025-06-26 10:17:58,306 I 2313871 2313871] (gcs_server) gcs_job_manager.cc:156: Finished marking job state, job id = 01000000
+[2025-06-26 10:17:58,329 I 2313871 2313871] (gcs_server) gcs_node_manager.cc:386: Removing node, node name = 192.168.10.101, death reason = EXPECTED_TERMINATION, death message = received SIGTERM node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,330 I 2313871 2313871] (gcs_server) gcs_placement_group_mgr.cc:802: Node is dead, rescheduling the placement groups on the dead node. node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,330 I 2313871 2313871] (gcs_server) gcs_actor_manager.cc:1325: Node is dead, reconstructing actors. node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,330 I 2313871 2313871] (gcs_server) gcs_job_manager.cc:478: Node is dead, mark all jobs from this node as finished node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,539 I 2313871 2313928] (gcs_server) ray_syncer_bidi_reactor_base.h:182: Failed to read the message from: 5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,540 I 2313871 2313928] (gcs_server) ray_syncer.cc:241: Connection is broken. node_id=5d7740571c163a93670da841ca56ca509ff8eb9eb83b784e0d7845a9
+[2025-06-26 10:17:58,544 I 2313871 2313871] (gcs_server) gcs_server_main.cc:172: GCS server received SIGTERM, shutting down...
+[2025-06-26 10:17:58,545 I 2313871 2313871] (gcs_server) gcs_server.cc:271: Stopping GCS server.
+[2025-06-26 10:17:58,598 I 2313871 2313871] (gcs_server) gcs_server.cc:288: GCS server stopped.
+[2025-06-26 10:17:58,598 I 2313871 2313871] (gcs_server) io_service_pool.cc:48: IOServicePool is stopped.
+[2025-06-26 10:17:58,675 I 2313871 2313871] (gcs_server) stats.h:120: Stats module has shutdown.

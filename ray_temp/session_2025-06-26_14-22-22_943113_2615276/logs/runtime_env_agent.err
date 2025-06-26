@@ -1,0 +1,22 @@
+Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [state-dump] 	Subscriber.HandlePublishedMessage_GCS_JOB_CHANNEL - 1 total (0 active), Execution time: mean = 33.650 us, total = 33.650 us, Queueing time: mean = 103.533 us, max = 103.533 us, min = 103.533 us, total = 103.533 us
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.GetAllNodeInfo - 1 total (0 active), Execution time: mean = 691.797 us, total = 691.797 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	CoreWorkerService.grpc_client.ActorCallArgWaitComplete.OnReplyReceived - 1 total (0 active), Execution time: mean = 12.784 us, total = 12.784 us, Queueing time: mean = 93.491 us, max = 93.491 us, min = 93.491 us, total = 93.491 us
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.GetAllNodeInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 106.720 us, total = 106.720 us, Queueing time: mean = 14.666 us, max = 14.666 us, min = 14.666 us, total = 14.666 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob.OnReplyReceived - 1 total (0 active), Execution time: mean = 29.477 us, total = 29.477 us, Queueing time: mean = 99.981 us, max = 99.981 us, min = 99.981 us, total = 99.981 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob - 1 total (0 active), Execution time: mean = 602.030 us, total = 602.030 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::InternalPubSubGcsService.grpc_client.GcsSubscriberPoll.OnReplyReceived - 1 total (0 active), Execution time: mean = 110.225 us, total = 110.225 us, Queueing time: mean = 18.233 us, max = 18.233 us, min = 18.233 us, total = 18.233 us
+    [state-dump] 	ray::rpc::InternalKVGcsService.grpc_client.GetInternalConfig - 1 total (0 active), Execution time: mean = 878.186 us, total = 878.186 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	CoreWorkerService.grpc_client.ActorCallArgWaitComplete - 1 total (0 active), Execution time: mean = 855.152 us, total = 855.152 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	NodeManager.GCTaskFailureReason - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.GetAllJobInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 11.258 us, total = 11.258 us, Queueing time: mean = 16.839 us, max = 16.839 us, min = 16.839 us, total = 16.839 us
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.RegisterNode.OnReplyReceived - 1 total (0 active), Execution time: mean = 458.074 us, total = 458.074 us, Queueing time: mean = 45.770 us, max = 45.770 us, min = 45.770 us, total = 45.770 us
+    [state-dump] 	ray::rpc::InternalKVGcsService.grpc_client.GetInternalConfig.OnReplyReceived - 1 total (0 active), Execution time: mean = 13.827 ms, total = 13.827 ms, Queueing time: mean = 14.195 us, max = 14.195 us, min = 14.195 us, total = 14.195 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.GetAllJobInfo - 1 total (0 active), Execution time: mean = 396.380 us, total = 396.380 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] DebugString() time ms: 1
+    [state-dump] 
+    [state-dump] 
+    [2025-06-26 14:24:25,789 W 2615983 2615983] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 14:24:30,792 W 2615983 2615983] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 14:24:35,796 W 2615983 2615983] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+

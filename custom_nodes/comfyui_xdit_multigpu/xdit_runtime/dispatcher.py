@@ -8,8 +8,10 @@ Worker scheduling strategies for multi-GPU inference.
 import time
 import logging
 import threading
+import os
 from typing import Dict, Any, Optional, List, Tuple
 from enum import Enum
+import torch
 
 # Try to import Ray
 try:
@@ -18,7 +20,7 @@ try:
 except ImportError:
     RAY_AVAILABLE = False
 
-from .worker import XDiTWorker, XDiTWorkerFallback
+from .worker import XDiTWorker, XDiTWorkerFallback, find_free_port
 from .ray_manager import initialize_ray, is_ray_available
 
 logger = logging.getLogger(__name__)
@@ -48,11 +50,17 @@ class XDiTDispatcher:
         self.lock = threading.Lock()
         self.is_initialized = False
         
+        # 分布式配置
+        self.master_addr = "127.0.0.1"
+        self.master_port = find_free_port()
+        self.world_size = len(gpu_devices)
+        
         logger.info(f"Initializing XDiT Dispatcher with {len(gpu_devices)} GPUs")
         logger.info(f"Scheduling strategy: {scheduling_strategy.value}")
+        logger.info(f"Distributed config: {self.master_addr}:{self.master_port}, world_size={self.world_size}")
     
     def initialize(self) -> bool:
-        """Initialize all workers"""
+        """Initialize all workers with coordinated distributed setup"""
         try:
             if RAY_AVAILABLE:
                 # Initialize Ray if not already done
@@ -63,19 +71,68 @@ class XDiTDispatcher:
                         return False
                     logger.info("Ray initialized successfully")
                 
-                # Create Ray workers
-                for gpu_id in self.gpu_devices:
-                    worker = XDiTWorker.remote(gpu_id, self.model_path, self.strategy)
+                # Create Ray workers with proper distributed parameters
+                worker_init_futures = []
+                
+                for i, gpu_id in enumerate(self.gpu_devices):
+                    worker = XDiTWorker.remote(
+                        gpu_id=gpu_id, 
+                        model_path=self.model_path, 
+                        strategy=self.strategy,
+                        master_addr=self.master_addr,
+                        master_port=self.master_port,
+                        world_size=self.world_size,
+                        rank=i  # 使用索引作为rank
+                    )
                     self.workers[gpu_id] = worker
                     self.worker_loads[gpu_id] = 0
                     
-                    # Initialize worker
-                    success = ray.get(worker.initialize.remote())
-                    if not success:
-                        logger.error(f"Failed to initialize Ray worker on GPU {gpu_id}")
+                    # Initialize worker (basic setup)
+                    future = worker.initialize.remote()
+                    worker_init_futures.append((gpu_id, future))
+                
+                # Wait for all workers to complete basic initialization
+                logger.info("Waiting for all workers to complete basic initialization...")
+                for gpu_id, future in worker_init_futures:
+                    try:
+                        success = ray.get(future, timeout=60)
+                        if not success:
+                            logger.error(f"Failed to initialize Ray worker on GPU {gpu_id}")
+                            return False
+                        logger.info(f"✅ Ray worker initialized on GPU {gpu_id}")
+                    except Exception as e:
+                        logger.error(f"Worker initialization failed on GPU {gpu_id}: {e}")
                         return False
+                
+                # Now initialize distributed environment for multi-GPU
+                if self.world_size > 1:
+                    logger.info("Initializing distributed environment for multi-GPU...")
+                    distributed_futures = []
                     
-                    logger.info(f"✅ Ray worker initialized on GPU {gpu_id}")
+                    for gpu_id, worker in self.workers.items():
+                        future = worker.initialize_distributed.remote()
+                        distributed_futures.append((gpu_id, future))
+                    
+                    # Wait for distributed initialization
+                    distributed_success = True
+                    for gpu_id, future in distributed_futures:
+                        try:
+                            success = ray.get(future, timeout=300)  # 5分钟超时
+                            if not success:
+                                logger.error(f"Failed to initialize distributed on GPU {gpu_id}")
+                                distributed_success = False
+                            else:
+                                logger.info(f"✅ Distributed initialized on GPU {gpu_id}")
+                        except Exception as e:
+                            logger.error(f"Distributed initialization failed on GPU {gpu_id}: {e}")
+                            distributed_success = False
+                    
+                    if not distributed_success:
+                        logger.warning("Some workers failed distributed initialization, falling back to single-GPU mode")
+                        # 不返回False，而是继续，让系统回退到单GPU
+                else:
+                    logger.info("Single GPU mode, skipping distributed initialization")
+                    
             else:
                 # Use fallback workers
                 logger.warning("Ray not available, using fallback workers")
@@ -98,6 +155,7 @@ class XDiTDispatcher:
             
         except Exception as e:
             logger.error(f"Failed to initialize XDiT Dispatcher: {e}")
+            logger.exception("Dispatcher initialization traceback:")
             return False
     
     def get_next_worker(self) -> Optional[Any]:
@@ -233,14 +291,14 @@ class XDiTDispatcher:
         return worker
     
     def run_inference(self, 
-                     prompt: str,
-                     negative_prompt: str = "",
-                     height: int = 512,
-                     width: int = 512,
+                     model_state_dict: Dict,
+                     conditioning_positive: Any,
+                     conditioning_negative: Any,
+                     latent_samples: torch.Tensor,
                      num_inference_steps: int = 20,
                      guidance_scale: float = 8.0,
-                     seed: int = 42) -> Optional[Any]:
-        """Run inference using the dispatcher"""
+                     seed: int = 42) -> Optional[torch.Tensor]:
+        """Run inference using the dispatcher with ComfyUI model integration"""
         try:
             if not self.is_initialized:
                 logger.error("Dispatcher not initialized")
@@ -251,20 +309,75 @@ class XDiTDispatcher:
             if worker is None:
                 logger.error("No available workers")
                 return None
+                
+            # 🔧 修复模型路径处理：直接使用safetensors文件进行xDiT推理
+            effective_model_path = self.model_path
             
-            # Run inference
+            # 检查是否是safetensors文件
+            if self.model_path.endswith('.safetensors'):
+                logger.info(f"Using safetensors file for xDiT: {self.model_path}")
+                # 对于xDiT，我们可以直接使用safetensors文件路径
+                # xFuserFluxPipeline应该能够处理safetensors文件
+                effective_model_path = self.model_path
+                
+                # 验证文件是否存在
+                if not os.path.exists(effective_model_path):
+                    logger.error(f"Model file not found: {effective_model_path}")
+                    return None
+                    
+                logger.info(f"✅ Safetensors file verified: {effective_model_path}")
+            else:
+                # 如果是目录路径，验证diffusers格式
+                if os.path.isdir(self.model_path):
+                    model_index_path = os.path.join(self.model_path, "model_index.json")
+                    if os.path.exists(model_index_path):
+                        logger.info(f"✅ Diffusers directory verified: {self.model_path}")
+                        effective_model_path = self.model_path
+                    else:
+                        logger.error(f"Invalid diffusers directory (no model_index.json): {self.model_path}")
+                        return None
+                else:
+                    logger.error(f"Model path is neither safetensors file nor diffusers directory: {self.model_path}")
+                    return None
+            
+            # 🔧 优化：传递轻量级模型信息而非完整state_dict
+            # 提取模型基本信息
+            model_info = {
+                'type': 'flux' if 'flux' in effective_model_path.lower() else 'sd',  # 识别Flux模型
+                'path': effective_model_path,  # 使用有效的模型路径
+                'original_path': self.model_path,  # 保留原始路径
+                'format': 'safetensors' if effective_model_path.endswith('.safetensors') else 'diffusers',
+                'in_channels': 16 if 'flux' in effective_model_path.lower() else 4,  # Flux使用16通道
+                'device': 'cuda',
+                'dtype': 'torch.float16',
+            }
+            
+            logger.info(f"Running inference with model: {model_info['type']}, format: {model_info['format']}")
+            logger.info(f"Model path: {effective_model_path}")
+            
+            # Run inference with ComfyUI model data
             if RAY_AVAILABLE:
-                # Use Ray remote call
+                # Use Ray remote call  
                 result_ref = worker.run_inference.remote(
-                    prompt, negative_prompt, height, width,
-                    num_inference_steps, guidance_scale, seed
+                    model_info=model_info,  # 传递轻量级模型信息
+                    conditioning_positive=conditioning_positive,
+                    conditioning_negative=conditioning_negative,
+                    latent_samples=latent_samples,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    seed=seed
                 )
                 result = ray.get(result_ref)
             else:
                 # Use direct call
                 result = worker.run_inference(
-                    prompt, negative_prompt, height, width,
-                    num_inference_steps, guidance_scale, seed
+                    model_info=model_info,  # 传递轻量级模型信息
+                    conditioning_positive=conditioning_positive,
+                    conditioning_negative=conditioning_negative,
+                    latent_samples=latent_samples,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    seed=seed
                 )
             
             # Decrease load count

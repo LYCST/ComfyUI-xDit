@@ -1,0 +1,50 @@
+Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2025-06-26 13:58:14,248 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575858, the token is 83
+    [2025-06-26 13:58:14,252 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575861, the token is 84
+    [2025-06-26 13:58:14,256 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575863, the token is 85
+    [2025-06-26 13:58:14,261 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575866, the token is 86
+    [2025-06-26 13:58:14,265 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575867, the token is 87
+    [2025-06-26 13:58:14,270 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575878, the token is 88
+    [2025-06-26 13:58:14,275 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575895, the token is 89
+    [2025-06-26 13:58:14,280 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575896, the token is 90
+    [2025-06-26 13:58:14,285 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575900, the token is 91
+    [2025-06-26 13:58:14,290 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575901, the token is 92
+    [2025-06-26 13:58:14,294 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575923, the token is 93
+    [2025-06-26 13:58:14,299 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575925, the token is 94
+    [2025-06-26 13:58:14,305 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575929, the token is 95
+    [2025-06-26 13:58:14,352 I 2575594 2575622] (raylet) object_store.cc:38: Object store current usage 8e-09 / 68.7195 GB.
+    [2025-06-26 13:58:14,870 I 2575594 2575594] (raylet) worker_pool.cc:724: Job 01000000 already started in worker pool.
+    [2025-06-26 13:58:18,587 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 13:58:23,529 W 2575594 2575616] (raylet) metric_exporter.cc:105: [1] Export metrics to agent failed: RpcError: RPC Error message: failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:63165: Failed to connect to remote host: Connection refused; RPC Error details:  rpc_code: 14. This won't affect Ray, but you can lose metrics from the cluster.
+    [2025-06-26 13:58:23,591 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 13:58:24,014 I 2575594 2575594] (raylet) local_resource_manager.cc:288: Object store memory is idle.
+    [2025-06-26 13:58:28,593 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+
+Failed to publish error: Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2025-06-26 13:58:14,248 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575858, the token is 83
+    [2025-06-26 13:58:14,252 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575861, the token is 84
+    [2025-06-26 13:58:14,256 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575863, the token is 85
+    [2025-06-26 13:58:14,261 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575866, the token is 86
+    [2025-06-26 13:58:14,265 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575867, the token is 87
+    [2025-06-26 13:58:14,270 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575878, the token is 88
+    [2025-06-26 13:58:14,275 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575895, the token is 89
+    [2025-06-26 13:58:14,280 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575896, the token is 90
+    [2025-06-26 13:58:14,285 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575900, the token is 91
+    [2025-06-26 13:58:14,290 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575901, the token is 92
+    [2025-06-26 13:58:14,294 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575923, the token is 93
+    [2025-06-26 13:58:14,299 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575925, the token is 94
+    [2025-06-26 13:58:14,305 I 2575594 2575594] (raylet) worker_pool.cc:527: Started worker process with pid 2575929, the token is 95
+    [2025-06-26 13:58:14,352 I 2575594 2575622] (raylet) object_store.cc:38: Object store current usage 8e-09 / 68.7195 GB.
+    [2025-06-26 13:58:14,870 I 2575594 2575594] (raylet) worker_pool.cc:724: Job 01000000 already started in worker pool.
+    [2025-06-26 13:58:18,587 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 13:58:23,529 W 2575594 2575616] (raylet) metric_exporter.cc:105: [1] Export metrics to agent failed: RpcError: RPC Error message: failed to connect to all addresses; last error: UNKNOWN: ipv4:127.0.0.1:63165: Failed to connect to remote host: Connection refused; RPC Error details:  rpc_code: 14. This won't affect Ray, but you can lose metrics from the cluster.
+    [2025-06-26 13:58:23,591 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-26 13:58:24,014 I 2575594 2575594] (raylet) local_resource_manager.cc:288: Object store memory is idle.
+    [2025-06-26 13:58:28,593 W 2575594 2575594] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+ [type raylet_died]
+Traceback (most recent call last):
+  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/_private/utils.py", line 221, in publish_error_to_driver
+    gcs_client.publish_error(job_id.hex().encode(), error_type, message, job_id, 60)
+  File "python/ray/includes/gcs_client.pxi", line 628, in ray._raylet.InnerGcsClient.publish_error
+  File "python/ray/includes/common.pxi", line 118, in ray._raylet.check_status_timeout_as_rpc_error
+ray.exceptions.RpcError: Timed out while waiting for GCS to become available.

@@ -1,0 +1,5 @@
+:job_id:01000000
+:actor_name:XDiTWorker
+INFO 06-26 14:13:45 [config.py:119] Ulysses degree not set, using default value 1
+INFO 06-26 14:13:45 [config.py:124] Ring degree not set, using default value 1
+INFO 06-26 14:13:45 [config.py:166] Pipeline patch number not set, using default value 1

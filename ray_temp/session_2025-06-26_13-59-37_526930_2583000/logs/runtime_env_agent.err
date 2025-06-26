@@ -1,0 +1,50 @@
+Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2025-06-26 14:11:27,680 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=1, has_creation_task_exception=false worker_id=9527b01615a8a44abf9c25bcfdb839d742af93c8fba217795cdef102
+    [2025-06-26 14:11:27,680 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=1, has_creation_task_exception=false worker_id=584e618192d4a83a65fc12e3f05e75b64e3a691d8ef6029cd5fdac0d
+    [2025-06-26 14:11:27,683 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=0, has_creation_task_exception=false worker_id=c392df875e0df118f81f2d9c8211ecd953b3f2cd987e85b3300e71eb
+    [2025-06-26 14:11:27,683 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=0, has_creation_task_exception=false worker_id=735726108a8c9b599db8dccdec4290b8cc365c58aa73c5febe20f90c
+    [2025-06-26 14:11:27,764 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=584e618192d4a83a65fc12e3f05e75b64e3a691d8ef6029cd5fdac0d
+    [2025-06-26 14:11:27,764 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=c392df875e0df118f81f2d9c8211ecd953b3f2cd987e85b3300e71eb
+    [2025-06-26 14:11:27,764 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=4404c36e88585db86dce6643795c30995837ef94ec09f75d7cd9d555
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=9527b01615a8a44abf9c25bcfdb839d742af93c8fba217795cdef102
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=388a23448a8296613cc9928749c2d49ce09f52d431a213656ebd03d9
+    [2025-06-26 14:11:27,766 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=69d76a78d5f3d4653443579f9e5aef899cde680d2fe5d205130f2123
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=735726108a8c9b599db8dccdec4290b8cc365c58aa73c5febe20f90c
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=166799906586dccbe94cbd8d6ff855f72fba711024b81ccf17cd511f
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,768 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+
+Failed to publish error: Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2025-06-26 14:11:27,680 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=1, has_creation_task_exception=false worker_id=9527b01615a8a44abf9c25bcfdb839d742af93c8fba217795cdef102
+    [2025-06-26 14:11:27,680 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=1, has_creation_task_exception=false worker_id=584e618192d4a83a65fc12e3f05e75b64e3a691d8ef6029cd5fdac0d
+    [2025-06-26 14:11:27,683 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=0, has_creation_task_exception=false worker_id=c392df875e0df118f81f2d9c8211ecd953b3f2cd987e85b3300e71eb
+    [2025-06-26 14:11:27,683 I 2583631 2583631] (raylet) node_manager.cc:1523: Disconnecting client, graceful=true, disconnect_type=0, has_creation_task_exception=false worker_id=735726108a8c9b599db8dccdec4290b8cc365c58aa73c5febe20f90c
+    [2025-06-26 14:11:27,764 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=584e618192d4a83a65fc12e3f05e75b64e3a691d8ef6029cd5fdac0d
+    [2025-06-26 14:11:27,764 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=c392df875e0df118f81f2d9c8211ecd953b3f2cd987e85b3300e71eb
+    [2025-06-26 14:11:27,764 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=4404c36e88585db86dce6643795c30995837ef94ec09f75d7cd9d555
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=9527b01615a8a44abf9c25bcfdb839d742af93c8fba217795cdef102
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=388a23448a8296613cc9928749c2d49ce09f52d431a213656ebd03d9
+    [2025-06-26 14:11:27,766 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,766 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=69d76a78d5f3d4653443579f9e5aef899cde680d2fe5d205130f2123
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=735726108a8c9b599db8dccdec4290b8cc365c58aa73c5febe20f90c
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583631] (raylet) node_manager.cc:567: Failed to send exit request to worker : RpcError: RPC Error message: Socket closed; RPC Error details:  rpc_code: 14. Killing it using SIGKILL instead. worker_id=166799906586dccbe94cbd8d6ff855f72fba711024b81ccf17cd511f
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,767 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+    [2025-06-26 14:11:27,768 W 2583631 2583663] (raylet) store.cc:368: Disconnecting client due to connection error with code 2: End of file
+ [type raylet_died]
+Traceback (most recent call last):
+  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/_private/utils.py", line 221, in publish_error_to_driver
+    gcs_client.publish_error(job_id.hex().encode(), error_type, message, job_id, 60)
+  File "python/ray/includes/gcs_client.pxi", line 628, in ray._raylet.InnerGcsClient.publish_error
+  File "python/ray/includes/common.pxi", line 118, in ray._raylet.check_status_timeout_as_rpc_error
+ray.exceptions.RpcError: Timed out while waiting for GCS to become available.

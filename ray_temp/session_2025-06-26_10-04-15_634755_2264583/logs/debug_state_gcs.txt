@@ -1,0 +1,85 @@
+Gcs Debug state:
+
+GcsNodeManager: 
+- RegisterNode request count: 0
+- DrainNode request count: 0
+- GetAllNodeInfo request count: 0
+
+GcsActorManager: 
+- RegisterActor request count: 0
+- CreateActor request count: 0
+- GetActorInfo request count: 0
+- GetNamedActorInfo request count: 0
+- GetAllActorInfo request count: 0
+- KillActor request count: 0
+- ListNamedActors request count: 0
+- Registered actors count: 0
+- Destroyed actors count: 0
+- Named actors count: 0
+- Unresolved actors count: 0
+- Pending actors count: 0
+- Created actors count: 0
+- owners_: 0
+- actor_to_register_callbacks_: 0
+- actor_to_restart_for_lineage_reconstruction_callbacks_: 0
+- actor_to_create_callbacks_: 0
+- sorted_destroyed_actor_list_: 0
+
+GcsResourceManager: 
+- GetAllAvailableResources request count: 0
+- GetAllTotalResources request count: 0
+- GetAllResourceUsage request count: 0
+
+GcsPlacementGroupManager: 
+- CreatePlacementGroup request count: 0
+- RemovePlacementGroup request count: 0
+- GetPlacementGroup request count: 0
+- GetAllPlacementGroup request count: 0
+- WaitPlacementGroupUntilReady request count: 0
+- GetNamedPlacementGroup request count: 0
+- Scheduling pending placement group count: 0
+- Registered placement groups count: 0
+- Named placement group count: 0
+- Pending placement groups count: 0
+- Infeasible placement groups count: 0
+
+Publisher:
+
+[runtime env manager] ID to URIs table:
+[runtime env manager] URIs reference table:
+
+GcsTaskManager: 
+-Total num task events reported: 0
+-Total num status task events dropped: 0
+-Total num profile events dropped: 0
+-Current num of task events stored: 0
+-Total num of actor creation tasks: 0
+-Total num of actor tasks: 0
+-Total num of normal tasks: 0
+-Total num of driver tasks: 0
+
+GcsAutoscalerStateManager: 
+- last_seen_autoscaler_state_version_: 0
+- last_cluster_resource_state_version_: 0
+- pending demands:
+
+
+
+
+
+Global stats: 28 total (5 active)
+Queueing time: mean = 70.526 ms, max = 218.753 ms, min = 81.000 ns, total = 1.975 s
+Execution time:  mean = 15.681 ms, total = 439.054 ms
+Event stats:
+	GcsInMemoryStore.Put - 9 total (0 active), Execution time: mean = 24.309 ms, total = 218.777 ms, Queueing time: mean = 169.684 ms, max = 218.351 ms, min = 1.674 us, total = 1.527 s
+	GcsInMemoryStore.GetAll - 5 total (0 active), Execution time: mean = 6.974 us, total = 34.869 us, Queueing time: mean = 27.268 us, max = 29.109 us, min = 25.375 us, total = 136.339 us
+	PeriodicalRunner.RunFnPeriodically - 4 total (1 active, 1 running), Execution time: mean = 66.558 us, total = 266.233 us, Queueing time: mean = 109.661 ms, max = 218.753 ms, min = 1.231 ms, total = 438.646 ms
+	event_loop_lag_probe - 2 total (0 active), Execution time: mean = 6.095 us, total = 12.190 us, Queueing time: mean = 4.192 ms, max = 8.340 ms, min = 43.795 us, total = 8.384 ms
+	RayletLoadPulled - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	GcsInitData::AsyncLoad - 1 total (0 active), Execution time: mean = 8.002 us, total = 8.002 us, Queueing time: mean = 250.000 ns, max = 250.000 ns, min = 250.000 ns, total = 250.000 ns
+	GcsServer.GetOrGenerateClusterId.continuation - 1 total (0 active), Execution time: mean = 218.758 ms, total = 218.758 ms, Queueing time: mean = 81.000 ns, max = 81.000 ns, min = 81.000 ns, total = 81.000 ns
+	GCSServer.deadline_timer.debug_state_event_stats_print - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	NodeInfoGcsService.grpc_server.GetClusterId.HandleRequestImpl - 1 total (0 active), Execution time: mean = 1.189 ms, total = 1.189 ms, Queueing time: mean = 401.151 us, max = 401.151 us, min = 401.151 us, total = 401.151 us
+	GcsInMemoryStore.Get - 1 total (0 active), Execution time: mean = 8.908 us, total = 8.908 us, Queueing time: mean = 14.232 us, max = 14.232 us, min = 14.232 us, total = 14.232 us
+	NodeInfoGcsService.grpc_server.GetClusterId - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+	ClusterResourceManager.ResetRemoteNodeView - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s

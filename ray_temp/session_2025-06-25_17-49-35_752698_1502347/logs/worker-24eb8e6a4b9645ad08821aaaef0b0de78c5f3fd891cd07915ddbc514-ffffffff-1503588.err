@@ -1,0 +1,12 @@
+:job_id:01000000
+/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/torch/utils/cpp_extension.py:1964: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
+If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
+  warnings.warn(
+:actor_name:XDiTWorker
+Failed to initialize xfuser worker on GPU 0: xFuserArgs.__init__() got an unexpected keyword argument 'model_name'
+Full traceback:
+Traceback (most recent call last):
+  File "/home/shuzuan/prj/ComfyUI-xDit/custom_nodes/comfyui_xdit_multigpu/xdit_runtime/worker.py", line 67, in initialize
+    xfuser_args = xFuserArgs(
+                  ^^^^^^^^^^^
+TypeError: xFuserArgs.__init__() got an unexpected keyword argument 'model_name'

@@ -77,8 +77,25 @@ class RayManager:
                 total_memory = psutil.virtual_memory().total / (1024**3)  # GB
                 memory_limit_gb = int(total_memory * 0.8)  # Use 80% of system memory
             
+            # 🔧 优化object store内存配置，特别针对多GPU大模型
             if object_store_memory_gb is None:
-                object_store_memory_gb = min(4, memory_limit_gb // 4)  # 4GB or 25% of memory
+                if num_gpus >= 8:
+                    # 8个RTX 4090需要大量object store内存
+                    object_store_memory_gb = 64  # 64GB for 8 RTX 4090s (increased from 32GB)
+                elif num_gpus >= 4:
+                    object_store_memory_gb = 32  # 32GB for 4+ GPUs
+                elif num_gpus >= 2:
+                    object_store_memory_gb = 16   # 16GB for 2+ GPUs
+                else:
+                    object_store_memory_gb = 8   # 8GB for single GPU
+                
+                # 确保不超过可用内存的50%（增加从40%）
+                max_object_store = int(memory_limit_gb * 0.5)
+                object_store_memory_gb = min(object_store_memory_gb, max_object_store)
+            
+            logger.info(f"Ray configuration for {num_gpus} GPUs:")
+            logger.info(f"  Object store memory: {object_store_memory_gb}GB")
+            logger.info(f"  Total system memory: {memory_limit_gb}GB")
             
             # Set up temp directory
             if temp_dir is None:
@@ -86,7 +103,7 @@ class RayManager:
             
             os.makedirs(temp_dir, exist_ok=True)
             
-            # Configure Ray
+            # Configure Ray with optimized settings
             ray_config = {
                 "num_cpus": os.cpu_count(),
                 "num_gpus": num_gpus,
@@ -97,6 +114,10 @@ class RayManager:
                 "local_mode": False,
                 "log_to_driver": True,
                 "logging_level": logging.INFO,
+                # 🔧 添加优化配置
+                "_temp_dir": temp_dir,
+                # 禁用一些不必要的功能来节省内存
+                "include_dashboard": False,  # 禁用dashboard节省内存
             }
             
             # Initialize Ray

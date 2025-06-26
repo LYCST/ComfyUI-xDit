@@ -1,0 +1,3 @@
+:job_id:01000000
+:actor_name:XDiTWorker
+I0626 13:58:20.211000 2575783 site-packages/torch/distributed/distributed_c10d.py:415] Using backend config: {'cuda': 'nccl'}

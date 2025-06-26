@@ -1,0 +1,22 @@
+Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [2025-06-25 17:21:26,031 I 1412746 1412746] (raylet) main.cc:310: Shutting down...
+    [2025-06-25 17:21:26,031 I 1412746 1412746] (raylet) accessor.cc:518: Unregistering node node_id=c3065f0a91075821625dad700db11cc1befa3100fb68c9da57a85f4b
+    [2025-06-25 17:21:26,033 I 1412746 1412746] (raylet) accessor.cc:768: Received notification for node, IsAlive = 0 node_id=c3065f0a91075821625dad700db11cc1befa3100fb68c9da57a85f4b
+    [2025-06-25 17:21:26,070 C 1412746 1412746] (raylet) node_manager.cc:953: [Timeout] Exiting because this node manager has mistakenly been marked as dead by the GCS: GCS failed to check the health of this node for 5 times. This is likely because the machine or raylet has become overloaded.
+    *** StackTrace Information ***
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0xe19cca) [0x5ad57abb2cca] ray::operator<<()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0xe1c089) [0x5ad57abb5089] ray::RayLog::~RayLog()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x2cec4b) [0x5ad57a067c4b] ray::raylet::NodeManager::NodeRemoved()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x611725) [0x5ad57a3aa725] ray::gcs::NodeInfoAccessor::HandleNotification()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x78aad8) [0x5ad57a523ad8] EventTracker::RecordExecution()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x785cb7) [0x5ad57a51ecb7] std::_Function_handler<>::_M_invoke()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x786116) [0x5ad57a51f116] boost::asio::detail::completion_handler<>::do_complete()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0xdf5c3b) [0x5ad57ab8ec3b] boost::asio::detail::scheduler::do_run_one()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0xdf81c9) [0x5ad57ab911c9] boost::asio::detail::scheduler::run()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0xdf86e2) [0x5ad57ab916e2] boost::asio::io_context::run()
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x1fa6cf) [0x5ad579f936cf] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7f6ae7e29d90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7f6ae7e29e40] __libc_start_main
+    /home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/core/src/ray/raylet/raylet(+0x25b547) [0x5ad579ff4547]
+    
+

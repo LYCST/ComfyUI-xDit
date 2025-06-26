@@ -1,0 +1,50 @@
+Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [state-dump] 	Subscriber.HandlePublishedMessage_GCS_JOB_CHANNEL - 1 total (0 active), Execution time: mean = 48.651 us, total = 48.651 us, Queueing time: mean = 135.627 us, max = 135.627 us, min = 135.627 us, total = 135.627 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob - 1 total (0 active), Execution time: mean = 675.834 us, total = 675.834 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::InternalKVGcsService.grpc_client.GetInternalConfig - 1 total (0 active), Execution time: mean = 752.448 us, total = 752.448 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.GetAllNodeInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 140.550 us, total = 140.550 us, Queueing time: mean = 18.657 us, max = 18.657 us, min = 18.657 us, total = 18.657 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob.OnReplyReceived - 1 total (0 active), Execution time: mean = 28.591 us, total = 28.591 us, Queueing time: mean = 123.842 us, max = 123.842 us, min = 123.842 us, total = 123.842 us
+    [state-dump] 	NodeManager.GCTaskFailureReason - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.RegisterNode.OnReplyReceived - 1 total (0 active), Execution time: mean = 272.138 us, total = 272.138 us, Queueing time: mean = 159.267 us, max = 159.267 us, min = 159.267 us, total = 159.267 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.GetAllJobInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 13.620 us, total = 13.620 us, Queueing time: mean = 16.599 us, max = 16.599 us, min = 16.599 us, total = 16.599 us
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.RegisterNode - 1 total (0 active), Execution time: mean = 1.384 ms, total = 1.384 ms, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	CoreWorkerService.grpc_client.ActorCallArgWaitComplete.OnReplyReceived - 1 total (0 active), Execution time: mean = 15.071 us, total = 15.071 us, Queueing time: mean = 86.596 us, max = 86.596 us, min = 86.596 us, total = 86.596 us
+    [state-dump] DebugString() time ms: 1
+    [state-dump] 
+    [state-dump] 
+    [2025-06-25 17:48:40,815 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:45,818 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:50,821 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:55,824 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:00,827 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:05,830 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:10,833 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+
+Failed to publish error: Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [state-dump] 	Subscriber.HandlePublishedMessage_GCS_JOB_CHANNEL - 1 total (0 active), Execution time: mean = 48.651 us, total = 48.651 us, Queueing time: mean = 135.627 us, max = 135.627 us, min = 135.627 us, total = 135.627 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob - 1 total (0 active), Execution time: mean = 675.834 us, total = 675.834 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::InternalKVGcsService.grpc_client.GetInternalConfig - 1 total (0 active), Execution time: mean = 752.448 us, total = 752.448 us, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.GetAllNodeInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 140.550 us, total = 140.550 us, Queueing time: mean = 18.657 us, max = 18.657 us, min = 18.657 us, total = 18.657 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.AddJob.OnReplyReceived - 1 total (0 active), Execution time: mean = 28.591 us, total = 28.591 us, Queueing time: mean = 123.842 us, max = 123.842 us, min = 123.842 us, total = 123.842 us
+    [state-dump] 	NodeManager.GCTaskFailureReason - 1 total (1 active), Execution time: mean = 0.000 s, total = 0.000 s, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.RegisterNode.OnReplyReceived - 1 total (0 active), Execution time: mean = 272.138 us, total = 272.138 us, Queueing time: mean = 159.267 us, max = 159.267 us, min = 159.267 us, total = 159.267 us
+    [state-dump] 	ray::rpc::JobInfoGcsService.grpc_client.GetAllJobInfo.OnReplyReceived - 1 total (0 active), Execution time: mean = 13.620 us, total = 13.620 us, Queueing time: mean = 16.599 us, max = 16.599 us, min = 16.599 us, total = 16.599 us
+    [state-dump] 	ray::rpc::NodeInfoGcsService.grpc_client.RegisterNode - 1 total (0 active), Execution time: mean = 1.384 ms, total = 1.384 ms, Queueing time: mean = 0.000 s, max = -0.000 s, min = 9223372036.855 s, total = 0.000 s
+    [state-dump] 	CoreWorkerService.grpc_client.ActorCallArgWaitComplete.OnReplyReceived - 1 total (0 active), Execution time: mean = 15.071 us, total = 15.071 us, Queueing time: mean = 86.596 us, max = 86.596 us, min = 86.596 us, total = 86.596 us
+    [state-dump] DebugString() time ms: 1
+    [state-dump] 
+    [state-dump] 
+    [2025-06-25 17:48:40,815 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:45,818 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:50,821 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:48:55,824 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:00,827 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:05,830 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+    [2025-06-25 17:49:10,833 W 1480431 1480431] (raylet) memory_monitor.cc:198: Got negative used memory for cgroup -1, setting it to zero
+ [type raylet_died]
+Traceback (most recent call last):
+  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/ray/_private/utils.py", line 221, in publish_error_to_driver
+    gcs_client.publish_error(job_id.hex().encode(), error_type, message, job_id, 60)
+  File "python/ray/includes/gcs_client.pxi", line 628, in ray._raylet.InnerGcsClient.publish_error
+  File "python/ray/includes/common.pxi", line 118, in ray._raylet.check_status_timeout_as_rpc_error
+ray.exceptions.RpcError: Timed out while waiting for GCS to become available.

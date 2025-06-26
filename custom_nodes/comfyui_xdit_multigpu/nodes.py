@@ -20,7 +20,26 @@ import comfy.utils
 import comfy.sd
 
 # Import our xDiT runtime
-from .xdit_runtime import XDiTDispatcher, SchedulingStrategy
+try:
+    from .xdit_runtime import XDiTDispatcher, SchedulingStrategy
+except ImportError:
+    # 如果相对导入失败，尝试绝对导入
+    try:
+        from xdit_runtime import XDiTDispatcher, SchedulingStrategy
+    except ImportError:
+        # 如果都失败，创建占位符类
+        class XDiTDispatcher:
+            def __init__(self, *args, **kwargs):
+                pass
+            def initialize(self):
+                return False
+            def get_status(self):
+                return {}
+            def run_inference(self, *args, **kwargs):
+                return None
+        
+        class SchedulingStrategy:
+            ROUND_ROBIN = "round_robin"
 
 # Try to import xDiT
 try:
@@ -63,9 +82,8 @@ class XDiTCheckpointLoader:
         Load checkpoint with optional multi-GPU acceleration
         """
         try:
+            # Load checkpoint using standard ComfyUI method
             ckpt_path = folder_paths.get_full_path_or_raise("checkpoints", ckpt_name)
-            
-            # Always load the standard way first
             out = comfy.sd.load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, embedding_directory=folder_paths.get_folder_paths("embeddings"))
             model, clip, vae = out[:3]
             
@@ -143,17 +161,16 @@ class XDiTUNetLoader:
                        "xDiT dispatcher for multi-GPU acceleration.")
     FUNCTION = "load_unet"
     CATEGORY = "loaders"
-    DESCRIPTION = "Loads a UNet diffusion model with optional multi-GPU acceleration using xDiT framework."
+    DESCRIPTION = "Loads a UNet model with optional multi-GPU acceleration using xDiT framework."
 
     def load_unet(self, unet_name, enable_multi_gpu=True, gpu_devices="0,1,2,3", parallel_strategy="Hybrid", scheduling_strategy="round_robin"):
         """
         Load UNet with optional multi-GPU acceleration
         """
         try:
-            unet_path = folder_paths.get_full_path_or_raise("unet", unet_name)
-            
             # Load UNet using standard ComfyUI method
-            model = comfy.sd.load_diffusion_model_state_dict(comfy.utils.load_torch_file(unet_path, safe_load=True))
+            unet_path = folder_paths.get_full_path_or_raise("unet", unet_name)
+            model = comfy.sd.load_unet(unet_path)
             
             dispatcher = None
             
@@ -351,68 +368,86 @@ class XDiTKSampler:
         Sample with optional multi-GPU acceleration
         """
         try:
-            # Try multi-GPU if dispatcher is available
-            if xdit_dispatcher is not None and XDIT_AVAILABLE:
-                try:
-                    logger.info(f"Using xDiT multi-GPU acceleration: {steps} steps, CFG={cfg}")
-                    
-                    # Extract prompt from conditioning
-                    prompt = self._extract_prompt_from_conditioning(positive)
-                    negative_prompt = self._extract_prompt_from_conditioning(negative)
-                    
-                    # Get latent dimensions
-                    samples = latent_image["samples"]
-                    batch_size, channels, height, width = samples.shape
-                    
-                    # Generate with dispatcher
-                    latents = xdit_dispatcher.run_inference(
-                        prompt=prompt,
-                        negative_prompt=negative_prompt,
-                        height=height * 8,  # Convert latent height to pixel height
-                        width=width * 8,    # Convert latent width to pixel width
-                        num_inference_steps=steps,
-                        guidance_scale=cfg,
-                        seed=seed
-                    )
-                    
-                    if latents is not None:
-                        # Apply denoise if needed
-                        if denoise < 1.0:
-                            original_latents = latent_image["samples"]
-                            latents = original_latents * (1 - denoise) + latents * denoise
-                        
-                        logger.info(f"✅ xDiT multi-GPU generation completed successfully")
-                        return ({"samples": latents},)
-                    else:
-                        logger.warning("xDiT generation failed, falling back to standard sampling")
-                        
-                except Exception as e:
-                    logger.error(f"Error during xDiT sampling: {e}")
-                    logger.info("Falling back to standard sampling")
+            # 🔧 首先检查模型是否有效
+            if model is None:
+                logger.error("Model is None, cannot proceed with sampling")
+                return (latent_image, )
             
-            # Fallback to standard sampling
-            return common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise)
+            # 检查dispatcher是否可用
+            if xdit_dispatcher is None:
+                logger.info("No xDiT dispatcher provided, using standard ComfyUI sampling")
+                raise Exception("No xDiT dispatcher")
+            
+            logger.info(f"Attempting xDiT multi-GPU acceleration: {steps} steps, CFG={cfg}")
+            
+            # Try xDiT multi-GPU inference
+            result_latents = xdit_dispatcher.run_inference(
+                model_state_dict={},  # 传递轻量级信息
+                conditioning_positive=positive,
+                conditioning_negative=negative,
+                latent_samples=latent_image["samples"],
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                seed=seed
+            )
+            
+            if result_latents is not None:
+                logger.info("✅ xDiT multi-GPU generation completed successfully")
+                # 🔧 确保返回正确格式的latent数据
+                return ({"samples": result_latents}, )
+            else:
+                logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
+                raise Exception("xDiT inference returned None")
+                
+        except Exception as e:
+            logger.warning(f"xDiT multi-GPU acceleration failed: {e}")
+            logger.info("🔄 Falling back to standard ComfyUI sampling")
+            
+            # 🔧 再次检查模型是否有效
+            if model is None:
+                logger.error("❌ Model is None, cannot use fallback sampling")
+                logger.info("🔄 Returning original latent as final fallback")
+                return (latent_image, )
+            
+            # 🔧 直接使用ComfyUI原生KSampler，避免架构不匹配问题
+            try:
+                logger.info("Using ComfyUI native KSampler for fallback")
+                
+                # 直接导入并使用ComfyUI的KSampler
+                from nodes import KSampler
+                
+                # 创建KSampler实例
+                native_sampler = KSampler()
+                
+                # 使用原生采样器
+                result = native_sampler.sample(
+                    model=model,
+                    seed=seed,
+                    steps=steps,
+                    cfg=cfg,
+                    sampler_name=sampler_name,
+                    scheduler=scheduler,
+                    positive=positive,
+                    negative=negative,
+                    latent_image=latent_image,
+                    denoise=denoise
+                )
+                
+                logger.info("✅ Native ComfyUI KSampler completed successfully")
+                return result
+                    
+            except Exception as fallback_error:
+                logger.error(f"❌ Native KSampler failed: {fallback_error}")
+                logger.exception("Fallback error traceback:")
+                logger.info("🔄 Returning original latent as final fallback")
+                # 最终fallback：返回原始latent
+                return (latent_image, )
             
         except Exception as e:
             logger.error(f"Error during sampling: {e}")
+            logger.exception("Full traceback:")
             # Return original latents on error
             return (latent_image,)
-    
-    def _extract_prompt_from_conditioning(self, conditioning):
-        """Extract prompt from conditioning"""
-        try:
-            # This is a simplified extraction - in practice you might need more complex logic
-            if isinstance(conditioning, (list, tuple)) and len(conditioning) > 0:
-                # Extract from the first conditioning
-                cond = conditioning[0]
-                if isinstance(cond, dict) and 'prompt' in cond:
-                    return cond['prompt']
-                elif hasattr(cond, 'prompt'):
-                    return cond.prompt
-            return "a beautiful image"
-        except Exception as e:
-            logger.warning(f"Could not extract prompt from conditioning: {e}")
-            return "a beautiful image"
 
 
 # Import the common_ksampler function
@@ -423,11 +458,56 @@ def common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, 
     try:
         # Import comfy.sample here to avoid circular imports
         import comfy.sample
+        import comfy.utils
+        import torch  # 添加torch导入
+        
+        # 🔧 正确提取tensor数据，ComfyUI采样器期望tensor而不是字典
+        if isinstance(latent_image, dict) and "samples" in latent_image:
+            latent_tensor = latent_image["samples"]
+        else:
+            latent_tensor = latent_image
+        
+        # 🔧 设置随机种子
+        effective_seed = seed_override or seed
+        torch.manual_seed(effective_seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(effective_seed)
+        
+        # 确保有正确的噪声
+        if not disable_noise:
+            # 生成与latent相同形状的噪声
+            noise = torch.randn_like(latent_tensor)
+        else:
+            noise = latent_tensor
+            
         # Use the same implementation as ComfyUI's KSampler
-        return comfy.sample.sample(model, None, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=denoise, disable_noise=disable_noise, start_step=start_step, last_step=last_step, force_full_denoise=force_full_denoise, noise_mask=noise_mask, sigmas=sigmas, callback=callback, disable_pbar=disable_pbar, seed=seed_override or seed)
+        samples = comfy.sample.sample(
+            model=model,
+            noise=noise,  # 传递正确的噪声
+            steps=steps,
+            cfg=cfg,
+            sampler_name=sampler_name,
+            scheduler=scheduler,
+            positive=positive,
+            negative=negative,
+            latent_image=latent_tensor,  # 🔧 传递tensor而不是字典
+            denoise=denoise,
+            disable_noise=disable_noise,
+            start_step=start_step,
+            last_step=last_step,
+            force_full_denoise=force_full_denoise,
+            noise_mask=noise_mask,
+            sigmas=sigmas,
+            callback=callback,
+            disable_pbar=disable_pbar,
+            seed=effective_seed
+        )
+        
+        return ({"samples": samples},)
     except Exception as e:
         logger.error(f"Error in common_ksampler: {e}")
-        return latent_image["samples"]
+        logger.exception("Full traceback:")
+        return (latent_image,)
 
 
 # Legacy nodes for backward compatibility
