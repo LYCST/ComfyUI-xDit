@@ -1,3 +1,0 @@
-:job_id:01000000
-WARNING 06-26 10:19:18 [envs.py:100] Flash Attention library "flash_attn" not found, using pytorch attention implementation
-:actor_name:XDiTWorker

@@ -1,4 +1,0 @@
-:job_id:01000000
-:actor_name:XDiTWorker
-WARNING 06-26 10:35:50 [args.py:377] Distributed environment is not initialized. Initializing...
-DEBUG 06-26 10:35:50 [parallel_state.py:207] world_size=-1 rank=-1 local_rank=-1 distributed_init_method=env:// backend=nccl

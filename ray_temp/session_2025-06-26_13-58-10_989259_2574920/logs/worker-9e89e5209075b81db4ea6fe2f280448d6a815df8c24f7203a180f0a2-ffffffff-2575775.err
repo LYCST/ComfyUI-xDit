@@ -1,35 +1,0 @@
-:job_id:01000000
-:actor_name:XDiTWorker
-I0626 13:58:20.222000 2575775 site-packages/torch/distributed/distributed_c10d.py:415] Using backend config: {'cuda': 'nccl'}
-Loading pipeline components...:   0%|          | 0/7 [00:00<?, ?it/s]
-Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s][ALoading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 41.34it/s]
-Loading pipeline components...:  14%|█▍        | 1/7 [00:00<00:01,  4.54it/s]You set `add_prefix_space`. The tokenizer needs to be converted from the slow tokenizers
-Loading pipeline components...:  71%|███████▏  | 5/7 [00:00<00:00,  9.44it/s]Loading pipeline components...:  71%|███████▏  | 5/7 [00:00<00:00,  8.85it/s]
-[GPU 0] Failed to create pipeline: /home/shuzuan/prj/ComfyUI-xDit/models/unet/flux/flux1-dev/transformer/ does not appear to have a file named /home/shuzuan/prj/ComfyUI-xDit/models/unet/flux/flux1-dev/transformer/diffusion_pytorch_model-00001-of-00003.safetensors which is required according to the checkpoint index.
-Pipeline creation traceback:
-Traceback (most recent call last):
-  File "/home/shuzuan/prj/ComfyUI-xDit/custom_nodes/comfyui_xdit_multigpu/xdit_runtime/worker.py", line 209, in _create_xfuser_pipeline_if_needed
-    self.model_wrapper = xFuserFluxPipeline.from_pretrained(
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/prj/xDiT/xfuser/model_executor/pipelines/pipeline_flux.py", line 64, in from_pretrained
-    pipeline = FluxPipeline.from_pretrained(pretrained_model_name_or_path, **kwargs)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/diffusers/pipelines/pipeline_utils.py", line 961, in from_pretrained
-    loaded_sub_model = load_sub_model(
-                       ^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/diffusers/pipelines/pipeline_loading_utils.py", line 777, in load_sub_model
-    loaded_sub_model = load_method(os.path.join(cached_folder, name), **loading_kwargs)
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/diffusers/models/modeling_utils.py", line 1109, in from_pretrained
-    resolved_model_file, sharded_metadata = _get_checkpoint_shard_files(
-                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/shuzuan/miniconda3/envs/comfyui-xdit/lib/python3.11/site-packages/diffusers/utils/hub_utils.py", line 394, in _get_checkpoint_shard_files
-    raise FileNotFoundError(
-FileNotFoundError: /home/shuzuan/prj/ComfyUI-xDit/models/unet/flux/flux1-dev/transformer/ does not appear to have a file named /home/shuzuan/prj/ComfyUI-xDit/models/unet/flux/flux1-dev/transformer/diffusion_pytorch_model-00001-of-00003.safetensors which is required according to the checkpoint index.
-⚠️ Pipeline creation failed on GPU 0

@@ -1,5 +1,0 @@
-:job_id:01000000
-WARNING 06-25 19:59:52 [envs.py:100] Flash Attention library "flash_attn" not found, using pytorch attention implementation
-:actor_name:XDiTWorker
-WARNING 06-25 19:59:53 [args.py:377] Distributed environment is not initialized. Initializing...
-DEBUG 06-25 19:59:53 [parallel_state.py:207] world_size=-1 rank=-1 local_rank=-1 distributed_init_method=env:// backend=nccl
