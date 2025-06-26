@@ -662,8 +662,7 @@ class XDiTWorker:
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
                 output_type="latent",
-                strategy=self.strategy,
-                device=self.device,
+                tensor_parallel_degree=self.world_size,
                 dtype="bfloat16"
             )
             
