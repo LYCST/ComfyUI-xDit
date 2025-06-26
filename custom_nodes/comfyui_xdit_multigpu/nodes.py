@@ -354,6 +354,8 @@ class XDiTKSampler:
             },
             "optional": {
                 "xdit_dispatcher": ("XDIT_DISPATCHER", {"tooltip": "xDiT dispatcher for multi-GPU acceleration"}),
+                "vae": ("VAE", {"tooltip": "VAE model for xDiT multi-GPU acceleration (optional)"}),
+                "clip": ("CLIP", {"tooltip": "CLIP model for xDiT multi-GPU acceleration (optional)"}),
             }
         }
 
@@ -363,10 +365,23 @@ class XDiTKSampler:
     CATEGORY = "sampling"
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image with optional multi-GPU acceleration."
 
-    def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None):
+    def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None, vae=None, clip=None):
         """
         Sample with optional multi-GPU acceleration
         """
+        import time
+        import threading
+        
+        # 设置超时机制
+        timeout_seconds = 180  # 3分钟超时
+        
+        def timeout_handler():
+            logger.warning(f"⏰ XDiT sampling timed out after {timeout_seconds} seconds")
+            raise TimeoutError("XDiT sampling timed out")
+        
+        # 创建超时线程
+        timeout_timer = threading.Timer(timeout_seconds, timeout_handler)
+        
         try:
             # 🔧 首先检查模型是否有效
             if model is None:
@@ -380,24 +395,45 @@ class XDiTKSampler:
             
             logger.info(f"Attempting xDiT multi-GPU acceleration: {steps} steps, CFG={cfg}")
             
-            # Try xDiT multi-GPU inference
-            result_latents = xdit_dispatcher.run_inference(
-                model_state_dict={},  # 传递轻量级信息
-                conditioning_positive=positive,
-                conditioning_negative=negative,
-                latent_samples=latent_image["samples"],
-                num_inference_steps=steps,
-                guidance_scale=cfg,
-                seed=seed
-            )
+            # 🎯 记录ComfyUI组件可用性
+            logger.info(f"🎯 ComfyUI components available:")
+            logger.info(f"  • VAE: {'✅ Available' if vae is not None else '❌ Missing'}")
+            logger.info(f"  • CLIP: {'✅ Available' if clip is not None else '❌ Missing'}")
             
-            if result_latents is not None:
-                logger.info("✅ xDiT multi-GPU generation completed successfully")
-                # 🔧 确保返回正确格式的latent数据
-                return ({"samples": result_latents}, )
-            else:
-                logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
-                raise Exception("xDiT inference returned None")
+            # 启动超时计时器
+            timeout_timer.start()
+            
+            try:
+                # Try xDiT multi-GPU inference with ComfyUI components
+                result_latents = xdit_dispatcher.run_inference(
+                    model_state_dict={},  # 传递轻量级信息
+                    conditioning_positive=positive,
+                    conditioning_negative=negative,
+                    latent_samples=latent_image["samples"],
+                    num_inference_steps=steps,
+                    guidance_scale=cfg,
+                    seed=seed,
+                    comfyui_vae=vae,  # 🎯 传递ComfyUI VAE
+                    comfyui_clip=clip  # 🎯 传递ComfyUI CLIP
+                )
+                
+                # 取消超时计时器
+                timeout_timer.cancel()
+                
+                if result_latents is not None:
+                    logger.info("✅ xDiT multi-GPU generation completed successfully")
+                    # 🔧 确保返回正确格式的latent数据
+                    return ({"samples": result_latents}, )
+                else:
+                    logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
+                    raise Exception("xDiT inference returned None")
+                    
+            except TimeoutError:
+                logger.error("⏰ XDiT multi-GPU inference timed out")
+                raise Exception("XDiT inference timed out")
+            finally:
+                # 确保取消超时计时器
+                timeout_timer.cancel()
                 
         except Exception as e:
             logger.warning(f"xDiT multi-GPU acceleration failed: {e}")

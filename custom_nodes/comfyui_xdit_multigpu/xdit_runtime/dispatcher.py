@@ -290,6 +290,71 @@ class XDiTDispatcher:
         logger.debug(f"Adaptive: assigned to GPU {best_gpu_id} (score: {scores[best_gpu_id]:.3f})")
         return worker
     
+    def _validate_model_path(self, model_path: str) -> bool:
+        """验证模型路径是否有效"""
+        try:
+            if model_path.endswith('.safetensors'):
+                return os.path.exists(model_path)
+            elif os.path.isdir(model_path):
+                model_index_path = os.path.join(model_path, "model_index.json")
+                return os.path.exists(model_index_path)
+            else:
+                return False
+        except Exception as e:
+            logger.error(f"Error validating model path {model_path}: {e}")
+            return False
+
+    def load_model_distributed(self, model_path: str, model_type: str = "flux"):
+        """分布式加载模型"""
+        try:
+            logger.info(f"🚀 Starting distributed model loading: {model_path}")
+            
+            # 验证模型路径
+            if not self._validate_model_path(model_path):
+                raise ValueError(f"Invalid model path: {model_path}")
+            
+            # 检查模型格式
+            if model_path.endswith('.safetensors'):
+                logger.info("💡 Safetensors format detected - using ComfyUI component reuse strategy")
+                logger.info("⚡ No downloads needed! Will use ComfyUI loaded VAE/CLIP components")
+                logger.info("🎯 This should complete in seconds, not minutes")
+            else:
+                logger.info("📦 Diffusers format detected - loading complete pipeline")
+            
+            # 使用新的load_model方法
+            futures = []
+            for worker in self.workers.values():
+                future = worker.load_model.remote(model_path, model_type)
+                futures.append(future)
+            
+            logger.info("⏳ Initializing workers with intelligent component reuse...")
+            
+            # 等待所有worker完成加载 - 对于safetensors应该很快
+            timeout = 300 if model_path.endswith('.safetensors') else 1800  # safetensors: 5分钟, diffusers: 30分钟
+            results = ray.get(futures, timeout=timeout)
+            
+            # 分析结果
+            success_count = sum(1 for r in results if r == "success")
+            deferred_count = sum(1 for r in results if r == "deferred_loading")
+            
+            logger.info(f"📊 Loading results: {success_count} success, {deferred_count} deferred")
+            
+            if success_count > 0:
+                logger.info("✅ Multi-GPU acceleration enabled!")
+                self.model_loaded = True
+                return "multi_gpu_success"
+            elif deferred_count > 0:
+                logger.info("✅ Workers ready for ComfyUI component integration")
+                self.model_loaded = True
+                return "fallback_to_comfyui"
+            else:
+                raise Exception("All workers failed to load model")
+                
+        except Exception as e:
+            logger.error(f"❌ Distributed model loading failed: {e}")
+            logger.exception("Full traceback:")
+            return "failed"
+
     def run_inference(self, 
                      model_state_dict: Dict,
                      conditioning_positive: Any,
@@ -297,12 +362,28 @@ class XDiTDispatcher:
                      latent_samples: torch.Tensor,
                      num_inference_steps: int = 20,
                      guidance_scale: float = 8.0,
-                     seed: int = 42) -> Optional[torch.Tensor]:
+                     seed: int = 42,
+                     comfyui_vae: Any = None,
+                     comfyui_clip: Any = None) -> Optional[torch.Tensor]:
         """Run inference using the dispatcher with ComfyUI model integration"""
         try:
             if not self.is_initialized:
                 logger.error("Dispatcher not initialized")
                 return None
+            
+            # 🔧 关键修复：首先尝试分布式加载模型
+            if not hasattr(self, 'model_loaded') or not self.model_loaded:
+                logger.info("🔄 Loading model distributed...")
+                load_result = self.load_model_distributed(self.model_path)
+                if load_result == "failed":
+                    logger.error("❌ Model loading failed completely")
+                    return None
+                elif load_result == "fallback_to_comfyui":
+                    # 🎯 关键修复：不要立即fallback！
+                    # deferred_loading意味着worker准备好接收ComfyUI组件
+                    # 我们应该继续尝试多GPU推理
+                    logger.info("🎯 Workers ready for ComfyUI component integration - proceeding with multi-GPU inference")
+                # 如果load_result == "multi_gpu_success"，继续多GPU推理
             
             # Get next available worker
             worker = self.get_next_worker()
@@ -312,6 +393,18 @@ class XDiTDispatcher:
                 
             # 🔧 修复模型路径处理：直接使用safetensors文件进行xDiT推理
             effective_model_path = self.model_path
+            
+            # 🎯 构建包含ComfyUI组件的model_info
+            model_info = {
+                'path': effective_model_path,
+                'type': 'flux',  # 假设是FLUX模型
+                'vae': comfyui_vae,
+                'clip': comfyui_clip
+            }
+            
+            logger.info(f"🎯 Passing ComfyUI components to worker:")
+            logger.info(f"  • VAE: {'✅ Available' if comfyui_vae is not None else '❌ Missing'}")
+            logger.info(f"  • CLIP: {'✅ Available' if comfyui_clip is not None else '❌ Missing'}")
             
             # 检查是否是safetensors文件
             if self.model_path.endswith('.safetensors'):
@@ -326,71 +419,119 @@ class XDiTDispatcher:
                     return None
                     
                 logger.info(f"✅ Safetensors file verified: {effective_model_path}")
+                model_info['path'] = effective_model_path
             else:
                 # 如果是目录路径，验证diffusers格式
-                if os.path.isdir(self.model_path):
-                    model_index_path = os.path.join(self.model_path, "model_index.json")
-                    if os.path.exists(model_index_path):
-                        logger.info(f"✅ Diffusers directory verified: {self.model_path}")
-                        effective_model_path = self.model_path
-                    else:
-                        logger.error(f"Invalid diffusers directory (no model_index.json): {self.model_path}")
+                if os.path.isdir(effective_model_path):
+                    model_index_path = os.path.join(effective_model_path, "model_index.json")
+                    if not os.path.exists(model_index_path):
+                        logger.error(f"Invalid diffusers directory: {effective_model_path}")
                         return None
+                    logger.info(f"✅ Diffusers directory verified: {effective_model_path}")
+                    model_info['path'] = effective_model_path
                 else:
-                    logger.error(f"Model path is neither safetensors file nor diffusers directory: {self.model_path}")
+                    logger.error(f"Unsupported model path format: {effective_model_path}")
                     return None
             
-            # 🔧 优化：传递轻量级模型信息而非完整state_dict
-            # 提取模型基本信息
-            model_info = {
-                'type': 'flux' if 'flux' in effective_model_path.lower() else 'sd',  # 识别Flux模型
-                'path': effective_model_path,  # 使用有效的模型路径
-                'original_path': self.model_path,  # 保留原始路径
-                'format': 'safetensors' if effective_model_path.endswith('.safetensors') else 'diffusers',
-                'in_channels': 16 if 'flux' in effective_model_path.lower() else 4,  # Flux使用16通道
-                'device': 'cuda',
-                'dtype': 'torch.float16',
-            }
+            logger.info(f"Running xDiT inference with {len(self.workers)} workers")
+            logger.info(f"Model: {model_info['path']}")
+            logger.info(f"Steps: {num_inference_steps}, CFG: {guidance_scale}")
             
-            logger.info(f"Running inference with model: {model_info['type']}, format: {model_info['format']}")
-            logger.info(f"Model path: {effective_model_path}")
+            # 🔧 添加超时机制和错误恢复
+            max_retries = 3
+            timeout_seconds = 120  # 2分钟超时
             
-            # Run inference with ComfyUI model data
-            if RAY_AVAILABLE:
-                # Use Ray remote call  
-                result_ref = worker.run_inference.remote(
-                    model_info=model_info,  # 传递轻量级模型信息
-                    conditioning_positive=conditioning_positive,
-                    conditioning_negative=conditioning_negative,
-                    latent_samples=latent_samples,
-                    num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale,
-                    seed=seed
-                )
-                result = ray.get(result_ref)
-            else:
-                # Use direct call
-                result = worker.run_inference(
-                    model_info=model_info,  # 传递轻量级模型信息
-                    conditioning_positive=conditioning_positive,
-                    conditioning_negative=conditioning_negative,
-                    latent_samples=latent_samples,
-                    num_inference_steps=num_inference_steps,
-                    guidance_scale=guidance_scale,
-                    seed=seed
-                )
-            
-            # Decrease load count
-            with self.lock:
-                for gpu_id, w in self.workers.items():
-                    if w == worker:
-                        self.worker_loads[gpu_id] = max(0, self.worker_loads[gpu_id] - 1)
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} - Running xDiT inference...")
+                    
+                    # 🔧 Run inference with model_info instead of model_state_dict
+                    if RAY_AVAILABLE:
+                        future = worker.run_inference.remote(
+                            model_info=model_info,  # 传递包含ComfyUI组件的model_info
+                            conditioning_positive=conditioning_positive,
+                            conditioning_negative=conditioning_negative,
+                            latent_samples=latent_samples,
+                            num_inference_steps=num_inference_steps,
+                            guidance_scale=guidance_scale,
+                            seed=seed
+                        )
+                        
+                        # Wait for result with reasonable timeout
+                        logger.info(f"⏳ Waiting for worker response (timeout: {timeout_seconds}s)...")
+                        result = ray.get(future, timeout=timeout_seconds)
+                    else:
+                        result = worker.run_inference(
+                            model_info=model_info,  # 传递包含ComfyUI组件的model_info
+                            conditioning_positive=conditioning_positive,
+                            conditioning_negative=conditioning_negative,
+                            latent_samples=latent_samples,
+                            num_inference_steps=num_inference_steps,
+                            guidance_scale=guidance_scale,
+                            seed=seed
+                        )
+                    
+                    # 检查结果
+                    if result is not None:
+                        logger.info(f"✅ xDiT inference completed successfully on attempt {attempt + 1}")
+                        
+                        # Update worker load
+                        worker_id = None
+                        for gpu_id, w in self.workers.items():
+                            if w == worker:
+                                worker_id = gpu_id
+                                break
+                        
+                        if worker_id is not None:
+                            self.worker_loads[worker_id] = max(0, self.worker_loads[worker_id] - 1)
+                        
+                        return result
+                    else:
+                        logger.warning(f"⚠️ xDiT inference returned None on attempt {attempt + 1}")
+                        if attempt < max_retries - 1:
+                            logger.info(f"🔄 Retrying with different worker...")
+                            # 尝试下一个worker
+                            worker = self.get_next_worker()
+                            if worker is None:
+                                logger.error("No more available workers")
+                                break
+                        else:
+                            logger.error("❌ All attempts failed - xDiT inference returned None")
+                            break
+                            
+                except ray.exceptions.GetTimeoutError:
+                    logger.error(f"⏰ Timeout on attempt {attempt + 1} after {timeout_seconds}s")
+                    if attempt < max_retries - 1:
+                        logger.info(f"🔄 Retrying with different worker...")
+                        # 尝试下一个worker
+                        worker = self.get_next_worker()
+                        if worker is None:
+                            logger.error("No more available workers")
+                            break
+                    else:
+                        logger.error("❌ All attempts timed out")
+                        break
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error on attempt {attempt + 1}: {e}")
+                    if attempt < max_retries - 1:
+                        logger.info(f"🔄 Retrying with different worker...")
+                        # 尝试下一个worker
+                        worker = self.get_next_worker()
+                        if worker is None:
+                            logger.error("No more available workers")
+                            break
+                    else:
+                        logger.error("❌ All attempts failed")
                         break
             
-            return result
+            # 如果所有尝试都失败了，触发fallback
+            logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
+            return None
             
         except Exception as e:
             logger.error(f"Error during inference: {e}")
+            logger.exception("Full traceback:")
             return None
     
     def get_status(self) -> Dict[str, Any]:

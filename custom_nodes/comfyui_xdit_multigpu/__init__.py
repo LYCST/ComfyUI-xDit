@@ -1,85 +1,105 @@
 """
-ComfyUI xDiT Multi-GPU Acceleration Plugin
-==========================================
+ComfyUI xDiT Multi-GPU Plugin
+=============================
 
-This plugin provides multi-GPU acceleration for ComfyUI using xDiT framework.
-It includes drop-in replacements for standard ComfyUI nodes with optional multi-GPU acceleration.
-
-Author: Your Name
-Version: 1.0.0
+A ComfyUI plugin that provides multi-GPU acceleration for diffusion models
+using the xDiT framework with drop-in replacement nodes.
 """
 
 import os
 import sys
-import torch
 import logging
-from typing import Dict, Any, Optional, List
+from pathlib import Path
 
-# Add xDiT path to Python path
-xdit_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "xDiT")
-if os.path.exists(xdit_path):
-    sys.path.insert(0, xdit_path)
+# 设置环境变量来解决tokenizer警告
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+# 设置日志
+logger = logging.getLogger(__name__)
+
+# 检查xDiT可用性
+XDIT_AVAILABLE = False
 try:
     import xfuser
     XDIT_AVAILABLE = True
-    print("✅ xDiT framework loaded successfully")
+    logger.info("✅ xDiT framework loaded successfully")
 except ImportError as e:
-    XDIT_AVAILABLE = False
-    print(f"⚠️  xDiT framework not available: {e}")
-    print("   Plugin will fall back to single-GPU mode")
+    logger.warning(f"⚠️  xDiT framework not available: {e}")
+    logger.info("   Plugin will fall back to single-GPU mode")
 
-# Try to import Ray
+# 检查Ray可用性
+RAY_AVAILABLE = False
 try:
     import ray
     RAY_AVAILABLE = True
-    print("✅ Ray framework loaded successfully")
+    logger.info("✅ Ray framework loaded successfully")
 except ImportError as e:
-    RAY_AVAILABLE = False
-    print(f"⚠️  Ray framework not available: {e}")
-    print("   Plugin will use fallback workers")
+    logger.warning(f"⚠️  Ray framework not available: {e}")
+    logger.info("   Plugin will fall back to single-GPU mode")
 
-# Import our custom nodes
-from .nodes import (
-    XDiTCheckpointLoader,
-    XDiTUNetLoader,
-    XDiTVAELoader,
-    XDiTCLIPLoader,
-    XDiTDualCLIPLoader,
-    XDiTKSampler,
-    MultiGPUModelLoader,
-    MultiGPUSampler
-)
-
-# Node class mappings for ComfyUI
-NODE_CLASS_MAPPINGS = {
-    # Drop-in replacements for standard nodes
-    "XDiTCheckpointLoader": XDiTCheckpointLoader,
-    "XDiTUNetLoader": XDiTUNetLoader,
-    "XDiTVAELoader": XDiTVAELoader,
-    "XDiTCLIPLoader": XDiTCLIPLoader,
-    "XDiTDualCLIPLoader": XDiTDualCLIPLoader,
-    "XDiTKSampler": XDiTKSampler,
+# 导入节点
+try:
+    from .nodes import (
+        XDiTCheckpointLoader,
+        XDiTUNetLoader,
+        XDiTVAELoader,
+        XDiTCLIPLoader,
+        XDiTDualCLIPLoader,
+        XDiTKSampler,
+        MultiGPUModelLoader,
+        MultiGPUSampler
+    )
     
-    # Legacy nodes for backward compatibility
-    "MultiGPUModelLoader": MultiGPUModelLoader,
-    "MultiGPUSampler": MultiGPUSampler,
-}
-
-# Node display names for the UI
-NODE_DISPLAY_NAME_MAPPINGS = {
-    # Drop-in replacements with clear naming
-    "XDiTCheckpointLoader": "Load Checkpoint (xDiT Multi-GPU)",
-    "XDiTUNetLoader": "Load UNet (xDiT Multi-GPU)",
-    "XDiTVAELoader": "Load VAE (xDiT)",
-    "XDiTCLIPLoader": "Load CLIP (xDiT)",
-    "XDiTDualCLIPLoader": "Load Dual CLIP (xDiT)",
-    "XDiTKSampler": "KSampler (xDiT Multi-GPU)",
+    # 注册节点
+    NODE_CLASS_MAPPINGS = {
+        "XDiTCheckpointLoader": XDiTCheckpointLoader,
+        "XDiTUNetLoader": XDiTUNetLoader,
+        "XDiTVAELoader": XDiTVAELoader,
+        "XDiTCLIPLoader": XDiTCLIPLoader,
+        "XDiTDualCLIPLoader": XDiTDualCLIPLoader,
+        "XDiTKSampler": XDiTKSampler,
+        "MultiGPUModelLoader": MultiGPUModelLoader,
+        "MultiGPUSampler": MultiGPUSampler
+    }
     
-    # Legacy nodes
-    "MultiGPUModelLoader": "Multi-GPU Model Loader",
-    "MultiGPUSampler": "Multi-GPU Sampler",
-}
+    NODE_DISPLAY_NAME_MAPPINGS = {
+        "XDiTCheckpointLoader": "Load Checkpoint (xDiT)",
+        "XDiTUNetLoader": "Load UNet (xDiT)",
+        "XDiTVAELoader": "Load VAE (xDiT)",
+        "XDiTCLIPLoader": "Load CLIP (xDiT)",
+        "XDiTDualCLIPLoader": "Load Dual CLIP (xDiT)",
+        "XDiTKSampler": "KSampler (xDiT)",
+        "MultiGPUModelLoader": "Multi-GPU Model Loader",
+        "MultiGPUSampler": "Multi-GPU Sampler"
+    }
+    
+    logger.info("🚀 ComfyUI xDiT Multi-GPU Plugin v1.0.0 loaded successfully!")
+    logger.info("   📋 Drop-in replacements for standard ComfyUI nodes:")
+    logger.info("      • XDiTCheckpointLoader -> CheckpointLoaderSimple")
+    logger.info("      • XDiTUNetLoader -> UNetLoader")
+    logger.info("      • XDiTVAELoader -> VAELoader")
+    logger.info("      • XDiTCLIPLoader -> CLIPLoader")
+    logger.info("      • XDiTDualCLIPLoader -> DualCLIPLoader")
+    logger.info("      • XDiTKSampler -> KSampler")
+    if XDIT_AVAILABLE:
+        logger.info("   ✅ Multi-GPU acceleration enabled")
+        logger.info("   📊 Available parallel strategies: PipeFusion, USP, Hybrid, Tensor, CFG")
+    if RAY_AVAILABLE:
+        logger.info("   🎯 Ray-based distributed computing enabled")
+        logger.info("   📈 Available scheduling strategies: round_robin, least_loaded, weighted_round_robin, adaptive")
+    logger.info("   💡 Usage: Simply replace standard nodes with xDiT versions for automatic multi-GPU acceleration")
+    
+except Exception as e:
+    logger.error(f"❌ Failed to load xDiT Multi-GPU Plugin: {e}")
+    logger.exception("Full traceback:")
+    
+    # 提供空的映射作为fallback
+    NODE_CLASS_MAPPINGS = {}
+    NODE_DISPLAY_NAME_MAPPINGS = {}
+
+__version__ = "1.0.0"
+__author__ = "ComfyUI xDiT Team"
+__description__ = "Multi-GPU acceleration for ComfyUI using xDiT framework"
 
 # Custom types for ComfyUI
 CUSTOM_NODES = {
@@ -91,34 +111,4 @@ CUSTOM_NODES = {
 }
 
 # Web extensions (if any)
-WEB_DIRECTORY = "./web"
-
-# Version info
-__version__ = "1.0.0"
-__author__ = "Your Name"
-
-print(f"🚀 ComfyUI xDiT Multi-GPU Plugin v{__version__} loaded successfully!")
-print("   📋 Drop-in replacements for standard ComfyUI nodes:")
-print("      • XDiTCheckpointLoader -> CheckpointLoaderSimple")
-print("      • XDiTUNetLoader -> UNetLoader")
-print("      • XDiTVAELoader -> VAELoader")
-print("      • XDiTCLIPLoader -> CLIPLoader")
-print("      • XDiTDualCLIPLoader -> DualCLIPLoader")
-print("      • XDiTKSampler -> KSampler")
-
-if XDIT_AVAILABLE:
-    print("   ✅ Multi-GPU acceleration enabled")
-    print("   📊 Available parallel strategies: PipeFusion, USP, Hybrid, Tensor, CFG")
-    if RAY_AVAILABLE:
-        print("   🎯 Ray-based distributed computing enabled")
-        print("   📈 Available scheduling strategies: round_robin, least_loaded, weighted_round_robin, adaptive")
-    else:
-        print("   ⚠️  Ray not available, using fallback workers")
-else:
-    print("   ⚠️  Running in single-GPU mode (xDiT not available)")
-
-print("   💡 Usage: Simply replace standard nodes with xDiT versions for automatic multi-GPU acceleration")
-
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__) 
+WEB_DIRECTORY = "./web" 
