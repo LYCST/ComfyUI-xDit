@@ -32,8 +32,11 @@ import requests
 import torch
 import base64
 import time
+import os
 from server import PromptServer
 
+# 使用环境变量或默认值
+SHUZUAN_BFL_API_KEY = os.getenv("SHUZUAN_BFL_API_KEY", "")
 
 def convert_mask_to_image(mask: torch.Tensor):
     """
@@ -80,10 +83,6 @@ def _poll_until_generated(
             result = response.json()
             if result["status"] == BFLStatus.ready:
                 img_url = result["result"]["sample"]
-                if node_id:
-                    PromptServer.instance.send_progress_text(
-                        f"Result URL: {img_url}", node_id
-                    )
                 img_response = requests.get(img_url)
                 return process_image_response(img_response)
             elif result["status"] in [
@@ -197,7 +196,7 @@ class FluxProUltraImageNode(ComfyNodeABC):
             },
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -236,9 +235,11 @@ class FluxProUltraImageNode(ComfyNodeABC):
     ):
         if image_prompt is None:
             validate_string(prompt, strip_whitespace=False)
+        
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.1-ultra/generate",
+                path="/v1/flux-pro-1.1-ultra",
                 method=HttpMethod.POST,
                 request_model=BFLFluxProUltraGenerateRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -264,7 +265,8 @@ class FluxProUltraImageNode(ComfyNodeABC):
                     None if image_prompt is None else round(image_prompt_strength, 2)
                 ),
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -341,7 +343,7 @@ class FluxKontextProImageNode(ComfyNodeABC):
             },
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -351,8 +353,6 @@ class FluxKontextProImageNode(ComfyNodeABC):
     FUNCTION = "api_call"
     API_NODE = True
     CATEGORY = "api node/image/BFL"
-
-    BFL_PATH = "/proxy/bfl/flux-kontext-pro/generate"
 
     def api_call(
         self,
@@ -375,9 +375,11 @@ class FluxKontextProImageNode(ComfyNodeABC):
         )
         if input_image is None:
             validate_string(prompt, strip_whitespace=False)
+        
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path=self.BFL_PATH,
+                path="/v1/flux-kontext-pro",
                 method=HttpMethod.POST,
                 request_model=BFLFluxKontextProGenerateRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -395,7 +397,8 @@ class FluxKontextProImageNode(ComfyNodeABC):
                     else convert_image_to_base64(input_image)
                 )
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -407,7 +410,55 @@ class FluxKontextMaxImageNode(FluxKontextProImageNode):
     """
 
     DESCRIPTION = cleandoc(__doc__ or "")
-    BFL_PATH = "/proxy/bfl/flux-kontext-max/generate"
+
+    def api_call(
+        self,
+        prompt: str,
+        aspect_ratio: str,
+        guidance: float,
+        steps: int,
+        input_image: Optional[torch.Tensor]=None,
+        seed=0,
+        prompt_upsampling=False,
+        unique_id: Union[str, None] = None,
+        **kwargs,
+    ):
+        aspect_ratio = validate_aspect_ratio(
+            aspect_ratio,
+            minimum_ratio=self.MINIMUM_RATIO,
+            maximum_ratio=self.MAXIMUM_RATIO,
+            minimum_ratio_str=self.MINIMUM_RATIO_STR,
+            maximum_ratio_str=self.MAXIMUM_RATIO_STR,
+        )
+        if input_image is None:
+            validate_string(prompt, strip_whitespace=False)
+        
+        # 直接调用 BFL API，绕过 ComfyUI 代理
+        operation = SynchronousOperation(
+            endpoint=ApiEndpoint(
+                path="/v1/flux-kontext-max",
+                method=HttpMethod.POST,
+                request_model=BFLFluxKontextProGenerateRequest,
+                response_model=BFLFluxProGenerateResponse,
+            ),
+            request=BFLFluxKontextProGenerateRequest(
+                prompt=prompt,
+                prompt_upsampling=prompt_upsampling,
+                guidance=round(guidance, 1),
+                steps=steps,
+                seed=seed,
+                aspect_ratio=aspect_ratio,
+                input_image=(
+                    input_image
+                    if input_image is None
+                    else convert_image_to_base64(input_image)
+                )
+            ),
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
+        )
+        output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
+        return (output_image,)
 
 
 class FluxProImageNode(ComfyNodeABC):
@@ -478,7 +529,7 @@ class FluxProImageNode(ComfyNodeABC):
             },
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -507,9 +558,10 @@ class FluxProImageNode(ComfyNodeABC):
                     else convert_image_to_base64(image_prompt)
                 )
 
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.1/generate",
+                path="/v1/flux-pro-1.1",
                 method=HttpMethod.POST,
                 request_model=BFLFluxProGenerateRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -522,7 +574,8 @@ class FluxProImageNode(ComfyNodeABC):
                 seed=seed,
                 image_prompt=image_prompt,
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -621,7 +674,7 @@ class FluxProExpandNode(ComfyNodeABC):
             "optional": {},
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -649,9 +702,10 @@ class FluxProExpandNode(ComfyNodeABC):
     ):
         image = convert_image_to_base64(image)
 
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.0-expand/generate",
+                path="/v1/flux-pro-1.0-expand",
                 method=HttpMethod.POST,
                 request_model=BFLFluxExpandImageRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -668,7 +722,8 @@ class FluxProExpandNode(ComfyNodeABC):
                 seed=seed,
                 image=image,
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -733,7 +788,7 @@ class FluxProFillNode(ComfyNodeABC):
             "optional": {},
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -762,9 +817,10 @@ class FluxProFillNode(ComfyNodeABC):
         # make sure image will have alpha channel removed
         image = convert_image_to_base64(image[:, :, :, :3])
 
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.0-fill/generate",
+                path="/v1/flux-pro-1.0-fill",
                 method=HttpMethod.POST,
                 request_model=BFLFluxFillImageRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -778,7 +834,8 @@ class FluxProFillNode(ComfyNodeABC):
                 image=image,
                 mask=mask,
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -868,7 +925,7 @@ class FluxProCannyNode(ComfyNodeABC):
             "optional": {},
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -909,9 +966,10 @@ class FluxProCannyNode(ComfyNodeABC):
             canny_low_threshold = None
             canny_high_threshold = None
 
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.0-canny/generate",
+                path="/v1/flux-pro-1.0-canny",
                 method=HttpMethod.POST,
                 request_model=BFLFluxCannyImageRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -927,7 +985,8 @@ class FluxProCannyNode(ComfyNodeABC):
                 canny_high_threshold=canny_high_threshold,
                 preprocessed_image=preprocessed_image,
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)
@@ -997,7 +1056,7 @@ class FluxProDepthNode(ComfyNodeABC):
             "optional": {},
             "hidden": {
                 "auth_token": "AUTH_TOKEN_COMFY_ORG",
-                "comfy_api_key": "API_KEY_COMFY_ORG",
+                "comfy_api_key": SHUZUAN_BFL_API_KEY,
                 "unique_id": "UNIQUE_ID",
             },
         }
@@ -1027,9 +1086,10 @@ class FluxProDepthNode(ComfyNodeABC):
             preprocessed_image = control_image
             control_image = None
 
+        # 直接调用 BFL API，绕过 ComfyUI 代理
         operation = SynchronousOperation(
             endpoint=ApiEndpoint(
-                path="/proxy/bfl/flux-pro-1.0-depth/generate",
+                path="/v1/flux-pro-1.0-depth",
                 method=HttpMethod.POST,
                 request_model=BFLFluxDepthImageRequest,
                 response_model=BFLFluxProGenerateResponse,
@@ -1043,7 +1103,8 @@ class FluxProDepthNode(ComfyNodeABC):
                 control_image=control_image,
                 preprocessed_image=preprocessed_image,
             ),
-            auth_kwargs=kwargs,
+            api_base="https://api.bfl.ai",
+            comfy_api_key=SHUZUAN_BFL_API_KEY,
         )
         output_image = handle_bfl_synchronous_operation(operation, node_id=unique_id)
         return (output_image,)

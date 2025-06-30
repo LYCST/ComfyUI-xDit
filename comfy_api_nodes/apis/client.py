@@ -240,7 +240,11 @@ class ApiClient:
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
         elif self.comfy_api_key:
-            headers["X-API-KEY"] = self.comfy_api_key
+            # BFL API uses x-key header instead of X-API-KEY
+            if "api.bfl.ai" in self.base_url:
+                headers["x-key"] = self.comfy_api_key
+            else:
+                headers["X-API-KEY"] = self.comfy_api_key
 
         return headers
 
