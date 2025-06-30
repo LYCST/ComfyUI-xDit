@@ -379,11 +379,7 @@ class XDiTDispatcher:
                     logger.error("❌ Model loading failed completely")
                     return None
                 elif load_result == "fallback_to_comfyui":
-                    # 🎯 关键修复：不要立即fallback！
-                    # deferred_loading意味着worker准备好接收ComfyUI组件
-                    # 我们应该继续尝试多GPU推理
                     logger.info("🎯 Workers ready for ComfyUI component integration - proceeding with multi-GPU inference")
-                # 如果load_result == "multi_gpu_success"，继续多GPU推理
             
             # Get next available worker
             worker = self.get_next_worker()
@@ -406,40 +402,18 @@ class XDiTDispatcher:
             logger.info(f"  • VAE: {'✅ Available' if comfyui_vae is not None else '❌ Missing'}")
             logger.info(f"  • CLIP: {'✅ Available' if comfyui_clip is not None else '❌ Missing'}")
             
-            # 检查是否是safetensors文件
-            if self.model_path.endswith('.safetensors'):
-                logger.info(f"Using safetensors file for xDiT: {self.model_path}")
-                # 对于xDiT，我们可以直接使用safetensors文件路径
-                # xFuserFluxPipeline应该能够处理safetensors文件
-                effective_model_path = self.model_path
-                
-                # 验证文件是否存在
-                if not os.path.exists(effective_model_path):
-                    logger.error(f"Model file not found: {effective_model_path}")
-                    return None
-                    
-                logger.info(f"✅ Safetensors file verified: {effective_model_path}")
-                model_info['path'] = effective_model_path
-            else:
-                # 如果是目录路径，验证diffusers格式
-                if os.path.isdir(effective_model_path):
-                    model_index_path = os.path.join(effective_model_path, "model_index.json")
-                    if not os.path.exists(model_index_path):
-                        logger.error(f"Invalid diffusers directory: {effective_model_path}")
-                        return None
-                    logger.info(f"✅ Diffusers directory verified: {effective_model_path}")
-                    model_info['path'] = effective_model_path
-                else:
-                    logger.error(f"Unsupported model path format: {effective_model_path}")
-                    return None
+            # 验证模型路径
+            if not os.path.exists(effective_model_path):
+                logger.error(f"Model file not found: {effective_model_path}")
+                return None
             
             logger.info(f"Running xDiT inference with {len(self.workers)} workers")
             logger.info(f"Model: {model_info['path']}")
             logger.info(f"Steps: {num_inference_steps}, CFG: {guidance_scale}")
             
-            # 🔧 添加超时机制和错误恢复
+            # 🔧 增加超时时间和添加进度监控
             max_retries = 3
-            timeout_seconds = 120  # 2分钟超时
+            timeout_seconds = 300  # 5分钟超时
             
             for attempt in range(max_retries):
                 try:
@@ -447,6 +421,7 @@ class XDiTDispatcher:
                     
                     # 🔧 Run inference with model_info instead of model_state_dict
                     if RAY_AVAILABLE:
+                        # 创建推理任务
                         future = worker.run_inference.remote(
                             model_info=model_info,  # 传递包含ComfyUI组件的model_info
                             conditioning_positive=conditioning_positive,
@@ -457,9 +432,29 @@ class XDiTDispatcher:
                             seed=seed
                         )
                         
-                        # Wait for result with reasonable timeout
+                        # 使用更智能的等待策略
                         logger.info(f"⏳ Waiting for worker response (timeout: {timeout_seconds}s)...")
-                        result = ray.get(future, timeout=timeout_seconds)
+                        start_time = time.time()
+                        check_interval = 10  # 每10秒检查一次
+                        
+                        while True:
+                            try:
+                                # 尝试获取结果（非阻塞）
+                                result = ray.get(future, timeout=check_interval)
+                                break  # 成功获取结果
+                            except ray.exceptions.GetTimeoutError:
+                                elapsed = time.time() - start_time
+                                if elapsed > timeout_seconds:
+                                    logger.error(f"⏰ Timeout after {elapsed:.1f}s")
+                                    raise TimeoutError(f"Inference timeout after {elapsed:.1f}s")
+                                else:
+                                    logger.info(f"⏳ Still processing... ({elapsed:.1f}s elapsed)")
+                                    # 检查worker状态
+                                    try:
+                                        gpu_info = ray.get(worker.get_gpu_info.remote(), timeout=1)
+                                        logger.info(f"Worker GPU memory: {gpu_info.get('memory_allocated_gb', 0):.1f}GB allocated")
+                                    except:
+                                        pass
                     else:
                         result = worker.run_inference(
                             model_info=model_info,  # 传递包含ComfyUI组件的model_info
@@ -499,8 +494,8 @@ class XDiTDispatcher:
                             logger.error("❌ All attempts failed - xDiT inference returned None")
                             break
                             
-                except ray.exceptions.GetTimeoutError:
-                    logger.error(f"⏰ Timeout on attempt {attempt + 1} after {timeout_seconds}s")
+                except (ray.exceptions.GetTimeoutError, TimeoutError):
+                    logger.error(f"⏰ Timeout on attempt {attempt + 1}")
                     if attempt < max_retries - 1:
                         logger.info(f"🔄 Retrying with different worker...")
                         # 尝试下一个worker
@@ -514,6 +509,7 @@ class XDiTDispatcher:
                         
                 except Exception as e:
                     logger.error(f"❌ Error on attempt {attempt + 1}: {e}")
+                    logger.exception("Inference error traceback:")
                     if attempt < max_retries - 1:
                         logger.info(f"🔄 Retrying with different worker...")
                         # 尝试下一个worker

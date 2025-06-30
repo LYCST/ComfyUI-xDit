@@ -172,7 +172,7 @@ class XDiTWorker:
     
     def _create_xfuser_pipeline_if_needed(self, model_path: str = None) -> bool:
         """创建xfuser pipeline - 使用xDiT的原始方法"""
-        if self.model_wrapper is not None:
+        if self.model_wrapper is not None and self.model_wrapper != "deferred_loading":
             return True
             
         try:
@@ -190,38 +190,100 @@ class XDiTWorker:
                 # 确保在正确的设备上
                 torch.cuda.set_device(0)  # Ray中总是0
                 
-                # 🎯 关键修复：直接使用xDiT的原始方法
-                # 对于safetensors文件，xDiT应该能够直接处理
+                # 对于safetensors文件，需要特殊处理
                 if effective_model_path.endswith('.safetensors'):
-                    logger.info(f"[GPU {self.gpu_id}] Loading safetensors with xDiT: {effective_model_path}")
+                    logger.info(f"[GPU {self.gpu_id}] Processing safetensors file")
                     
-                    # 使用xFuserArgs创建配置
-                    xfuser_args = xFuserArgs(
-                        model=effective_model_path,  # 直接传递safetensors路径
-                        height=1024,
-                        width=1024,
-                        num_inference_steps=20,
-                        guidance_scale=3.5,
-                        output_type="latent",
-                        tensor_parallel_degree=self.world_size,
-                        use_ray=True,
-                        ray_world_size=self.world_size
-                    )
-                    
-                    engine_config = xfuser_args.create_config()
-                    
-                    # 🎯 直接使用xDiT的from_pretrained方法
-                    # xDiT应该能够处理safetensors文件
-                    self.model_wrapper = xFuserFluxPipeline.from_pretrained(
-                        effective_model_path,
-                        engine_config=engine_config,
-                        torch_dtype=torch.bfloat16,
-                        low_cpu_mem_usage=True
-                    )
-                    
-                    logger.info(f"[GPU {self.gpu_id}] ✅ Successfully loaded safetensors with xDiT")
-                    
-                elif os.path.isdir(effective_model_path):
+                    # 方案1：尝试使用diffusers的from_single_file
+                    try:
+                        from diffusers import FluxPipeline
+                        from xfuser import xFuserFluxPipeline
+                        
+                        logger.info(f"[GPU {self.gpu_id}] Trying to load safetensors with from_single_file")
+                        
+                        # 使用from_single_file加载
+                        pipeline = FluxPipeline.from_single_file(
+                            effective_model_path,
+                            torch_dtype=torch.bfloat16,
+                            low_cpu_mem_usage=True
+                        )
+                        
+                        # 创建xFuser wrapper
+                        self.model_wrapper = xFuserFluxPipeline(pipeline, self.engine_config)
+                        self.model_wrapper.to(self.device)
+                        
+                        logger.info(f"[GPU {self.gpu_id}] ✅ Successfully loaded safetensors with from_single_file")
+                        return True
+                        
+                    except Exception as e:
+                        logger.warning(f"[GPU {self.gpu_id}] from_single_file failed: {e}")
+                        
+                        # 方案2：创建临时diffusers目录
+                        logger.info(f"[GPU {self.gpu_id}] Creating temporary diffusers directory")
+                        
+                        import json
+                        import tempfile
+                        import shutil
+                        
+                        temp_dir = f"/tmp/flux_diffusers_{self.gpu_id}_{os.getpid()}"
+                        
+                        try:
+                            # 清理旧的临时目录
+                            if os.path.exists(temp_dir):
+                                shutil.rmtree(temp_dir)
+                            
+                            # 创建目录结构
+                            os.makedirs(temp_dir, exist_ok=True)
+                            
+                            # 创建model_index.json
+                            model_index = {
+                                "_class_name": "FluxPipeline",
+                                "_diffusers_version": "0.30.0",
+                                "scheduler": ["diffusers", "FlowMatchEulerDiscreteScheduler"],
+                                "text_encoder": ["transformers", "CLIPTextModel"],
+                                "text_encoder_2": ["transformers", "T5EncoderModel"],
+                                "tokenizer": ["transformers", "CLIPTokenizer"],
+                                "tokenizer_2": ["transformers", "T5TokenizerFast"],
+                                "transformer": ["diffusers", "FluxTransformer2DModel"],
+                                "vae": ["diffusers", "AutoencoderKL"]
+                            }
+                            
+                            with open(os.path.join(temp_dir, "model_index.json"), "w") as f:
+                                json.dump(model_index, f, indent=2)
+                            
+                            # 创建transformer目录
+                            transformer_dir = os.path.join(temp_dir, "transformer")
+                            os.makedirs(transformer_dir, exist_ok=True)
+                            
+                            # 复制safetensors文件
+                            target_path = os.path.join(transformer_dir, "diffusion_pytorch_model.safetensors")
+                            shutil.copy2(effective_model_path, target_path)
+                            
+                            # 创建config.json
+                            transformer_config = {
+                                "in_channels": 64,
+                                "num_layers": 19,
+                                "num_single_layers": 38,
+                                "attention_head_dim": 128,
+                                "num_attention_heads": 24,
+                                "joint_attention_dim": 4096,
+                                "pooled_projection_dim": 768,
+                                "guidance_embeds": False
+                            }
+                            
+                            with open(os.path.join(transformer_dir, "config.json"), "w") as f:
+                                json.dump(transformer_config, f, indent=2)
+                            
+                            # 使用临时目录创建pipeline
+                            effective_model_path = temp_dir
+                            logger.info(f"[GPU {self.gpu_id}] Created temporary diffusers directory at: {temp_dir}")
+                            
+                        except Exception as convert_error:
+                            logger.error(f"[GPU {self.gpu_id}] Failed to create temp directory: {convert_error}")
+                            return False
+                
+                # 处理diffusers目录
+                if os.path.isdir(effective_model_path):
                     logger.info(f"[GPU {self.gpu_id}] Processing diffusers directory: {effective_model_path}")
                     
                     # 验证diffusers格式
@@ -274,7 +336,7 @@ class XDiTWorker:
             logger.error(f"[GPU {self.gpu_id}] Pipeline creation failed: {e}")
             logger.exception("Full traceback:")
             return False
-    
+
     def _create_flux_pipeline_from_comfyui_components(self, model_info: Dict) -> bool:
         """从ComfyUI组件创建FluxPipeline用于xDiT包装"""
         # 设置超时机制
@@ -662,8 +724,7 @@ class XDiTWorker:
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
                 output_type="latent",
-                tensor_parallel_degree=self.world_size,
-                dtype="bfloat16"
+                tensor_parallel_degree=self.world_size
             )
             
             engine_config = xfuser_args.create_config()
