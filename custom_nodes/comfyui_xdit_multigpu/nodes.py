@@ -366,9 +366,7 @@ class XDiTKSampler:
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image with optional multi-GPU acceleration."
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None, vae=None, clip=None):
-        """
-        Sample with optional multi-GPU acceleration
-        """
+        """Sample with optional multi-GPU acceleration"""
         import time
         import threading
         
@@ -392,6 +390,21 @@ class XDiTKSampler:
             if xdit_dispatcher is None:
                 logger.info("No xDiT dispatcher provided, using standard ComfyUI sampling")
                 raise Exception("No xDiT dispatcher")
+            
+            # 获取模型路径信息
+            model_path = None
+            if hasattr(model, 'model_path'):
+                model_path = model.model_path
+            elif hasattr(model, 'load_model_weights'):
+                # 尝试从model对象获取路径
+                model_path = getattr(model.load_model_weights, 'model_path', None)
+            
+            # 如果找到了模型路径，告诉dispatcher使用ComfyUI模式
+            if model_path and model_path.endswith('.safetensors'):
+                logger.info(f"Detected ComfyUI model: {model_path}")
+                # 设置dispatcher使用ComfyUI模式
+                if hasattr(xdit_dispatcher, 'set_comfyui_mode'):
+                    xdit_dispatcher.set_comfyui_mode(True)
             
             logger.info(f"Attempting xDiT multi-GPU acceleration: {steps} steps, CFG={cfg}")
             
@@ -430,7 +443,7 @@ class XDiTKSampler:
                     
             except TimeoutError:
                 logger.error("⏰ XDiT multi-GPU inference timed out")
-                raise Exception("XDiT inference timed out")
+                raise Exception("xDiT inference timed out")
             finally:
                 # 确保取消超时计时器
                 timeout_timer.cancel()
@@ -478,13 +491,40 @@ class XDiTKSampler:
                 logger.info("🔄 Returning original latent as final fallback")
                 # 最终fallback：返回原始latent
                 return (latent_image, )
+
+    def _fallback_to_standard_sampling(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
+        """Fallback to standard ComfyUI sampling"""
+        try:
+            logger.info("🔄 Using standard ComfyUI sampling as fallback")
+            
+            # 直接导入并使用ComfyUI的KSampler
+            from nodes import KSampler
+            
+            # 创建KSampler实例
+            native_sampler = KSampler()
+            
+            # 使用原生采样器
+            result = native_sampler.sample(
+                model=model,
+                seed=seed,
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                positive=positive,
+                negative=negative,
+                latent_image=latent_image,
+                denoise=denoise
+            )
+            
+            logger.info("✅ Standard ComfyUI sampling completed")
+            return result
             
         except Exception as e:
-            logger.error(f"Error during sampling: {e}")
-            logger.exception("Full traceback:")
-            # Return original latents on error
+            logger.error(f"❌ Fallback sampling failed: {e}")
+            logger.exception("Fallback error traceback:")
+            # 最终fallback：返回原始latent
             return (latent_image,)
-
 
 # Import the common_ksampler function
 def common_ksampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, disable_noise=False, start_step=None, last_step=None, force_full_denoise=False, noise_mask=None, sigmas=None, callback=None, disable_pbar=False, seed_override=None):

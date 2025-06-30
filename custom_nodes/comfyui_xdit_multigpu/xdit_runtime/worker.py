@@ -6,6 +6,7 @@ Ray Actor for GPU-specific inference operations.
 """
 
 import os
+import sys
 import torch
 import logging
 import time
@@ -15,6 +16,28 @@ import numpy as np
 import threading
 import socket
 import signal
+
+# 🔧 关键修复：确保Ray worker能找到ComfyUI模块
+# 添加ComfyUI根目录到Python路径
+comfyui_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+if comfyui_root not in sys.path:
+    sys.path.insert(0, comfyui_root)
+
+# 添加custom_nodes目录到Python路径
+custom_nodes_path = os.path.join(comfyui_root, 'custom_nodes')
+if custom_nodes_path not in sys.path:
+    sys.path.insert(0, custom_nodes_path)
+
+# 现在可以正确导入ComfyUI模块
+try:
+    import folder_paths
+    import comfy.sd
+    import comfy.utils
+    COMFYUI_AVAILABLE = True
+except ImportError:
+    COMFYUI_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("ComfyUI modules not available in worker")
 
 # Try to import Ray
 try:
@@ -44,6 +67,8 @@ def find_free_port():
         s.listen(1)
         port = s.getsockname()[1]
     return port
+
+
 
 @ray.remote(num_gpus=1) if RAY_AVAILABLE else None
 class XDiTWorker:
@@ -645,6 +670,143 @@ class XDiTWorker:
                     
         except Exception as e:
             logger.warning(f"Error during distributed cleanup: {e}")
+
+    def _init_comfyui_models(self, model_info: Dict) -> bool:
+        """直接使用ComfyUI的模型文件初始化"""
+        logger.info(f"[GPU {self.gpu_id}] Initializing with ComfyUI models")
+        
+        try:
+            # 简化导入逻辑
+            import sys
+            import os
+            
+            # 获取当前文件所在目录
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # 如果当前目录不在sys.path中，添加它
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
+            
+            # 现在尝试导入
+            from comfyui_model_wrapper import ComfyUIModelWrapper
+            
+            # 获取模型路径
+            model_path = model_info.get('path', self.model_path)
+            
+            # 获取VAE和CLIP路径（如果有的话）
+            vae_path = None
+            clip_paths = []
+            
+            # 尝试自动查找相关的VAE和CLIP
+            if model_path.endswith('.safetensors'):
+                model_name = os.path.basename(model_path).replace('.safetensors', '')
+                
+                # 查找VAE
+                try:
+                    vae_folder = folder_paths.get_folder_paths("vae")[0]
+                    potential_vae = os.path.join(vae_folder, "flux", "ae.safetensors")
+                    if os.path.exists(potential_vae):
+                        vae_path = potential_vae
+                        logger.info(f"[GPU {self.gpu_id}] Found VAE: {vae_path}")
+                except Exception as e:
+                    logger.warning(f"[GPU {self.gpu_id}] Could not find VAE: {e}")
+                
+                # 查找CLIP
+                try:
+                    clip_folder = folder_paths.get_folder_paths("text_encoders")[0]
+                    clip_l_path = os.path.join(clip_folder, "flux", "t5xxl_fp16.safetensors")
+                    clip_g_path = os.path.join(clip_folder, "flux", "clip_l.safetensors")
+                    
+                    if os.path.exists(clip_l_path):
+                        clip_paths.append(clip_l_path)
+                    if os.path.exists(clip_g_path):
+                        clip_paths.append(clip_g_path)
+                    
+                    if clip_paths:
+                        logger.info(f"[GPU {self.gpu_id}] Found CLIP: {clip_paths}")
+                except Exception as e:
+                    logger.warning(f"[GPU {self.gpu_id}] Could not find CLIP: {e}")
+            
+            # 创建wrapper
+            self.comfyui_wrapper = ComfyUIModelWrapper(
+                model_path=model_path,
+                vae_path=vae_path,
+                clip_paths=clip_paths
+            )
+            
+            # 加载组件
+            if not self.comfyui_wrapper.load_components():
+                logger.error(f"[GPU {self.gpu_id}] Failed to load ComfyUI components")
+                return False
+            
+            # 移动到GPU
+            self.comfyui_wrapper.to(self.device)
+            
+            # 标记为ComfyUI模式
+            self.model_wrapper = "comfyui_mode"
+            self.is_comfyui_mode = True
+            
+            logger.info(f"[GPU {self.gpu_id}] ✅ ComfyUI models initialized")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[GPU {self.gpu_id}] Failed to init ComfyUI models: {e}")
+            logger.exception("Init error:")
+            return False
+
+    def _run_comfyui_inference(self,
+                          conditioning_positive: Any,
+                          conditioning_negative: Any,
+                          latent_samples: torch.Tensor,
+                          num_inference_steps: int,
+                          guidance_scale: float,
+                          seed: int) -> Optional[torch.Tensor]:
+        """使用ComfyUI模型进行推理"""
+        try:
+            logger.info(f"[GPU {self.gpu_id}] Starting ComfyUI inference")
+            
+            # 设置随机种子
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            
+            # 确保数据在正确的设备上
+            latent_samples = latent_samples.to(self.device)
+            
+            # 使用ComfyUI的采样方法
+            import comfy.sample
+            import comfy.samplers
+            
+            # 创建噪声
+            noise = torch.randn_like(latent_samples)
+            
+            # 获取采样器
+            sampler = comfy.samplers.KSampler(
+                self.comfyui_wrapper.unet,
+                steps=num_inference_steps,
+                device=self.device,
+                sampler="euler",
+                scheduler="normal",
+                denoise=1.0
+            )
+            
+            # 执行采样
+            samples = sampler.sample(
+                noise,
+                conditioning_positive,
+                conditioning_negative,
+                cfg=guidance_scale,
+                latent_image=latent_samples,
+                force_full_denoise=True
+            )
+            
+            logger.info(f"[GPU {self.gpu_id}] ✅ ComfyUI inference completed")
+            return samples
+            
+        except Exception as e:
+            logger.error(f"[GPU {self.gpu_id}] ComfyUI inference failed: {e}")
+            logger.exception("Inference error:")
+            return None
+
     
     def run_inference(self, 
                      model_info: Dict,
@@ -659,6 +821,15 @@ class XDiTWorker:
             if not self.is_initialized:
                 logger.error(f"Worker on GPU {self.gpu_id} not initialized")
                 return None
+
+            # 检查是否是ComfyUI模式
+            if hasattr(self, 'is_comfyui_mode') and self.is_comfyui_mode:
+                logger.info(f"[GPU {self.gpu_id}] Running in ComfyUI mode")
+                return self._run_comfyui_inference(
+                    conditioning_positive, conditioning_negative,
+                    latent_samples, num_inference_steps,
+                    guidance_scale, seed
+                )
             
             # 检查是否需要分布式推理
             if self.world_size > 1:
@@ -800,40 +971,43 @@ class XDiTWorker:
         try:
             logger.info(f"[GPU {self.gpu_id}] Loading model: {model_path}")
             
-            # 初始化engine_config（如果还没有的话）
-            if not hasattr(self, 'engine_config'):
-                from xfuser import xFuserArgs
-                xfuser_args = xFuserArgs(
-                    model=model_path,
-                    height=1024,
-                    width=1024,
-                    num_inference_steps=20,
-                    guidance_scale=3.5,
-                    output_type="latent",
-                    tensor_parallel_degree=self.world_size,
-                    use_ray=True,
-                    ray_world_size=self.world_size
-                )
-                self.engine_config = xfuser_args.create_config()
-            
-            # 检查路径格式
+            # 检查是否是ComfyUI格式（safetensors）
             if model_path.endswith('.safetensors'):
-                logger.info(f"[GPU {self.gpu_id}] Detected safetensors format")
+                logger.info(f"[GPU {self.gpu_id}] Detected ComfyUI format, using native loading")
                 
-                # 🎯 重要：对于safetensors，我们使用延迟加载策略
-                # 不在这里预加载任何组件，等待ComfyUI组件传递
-                logger.info(f"[GPU {self.gpu_id}] 💡 Using deferred loading strategy for safetensors")
-                logger.info(f"[GPU {self.gpu_id}] 🎯 Will use ComfyUI components when available")
-                logger.info(f"[GPU {self.gpu_id}] ⚡ No downloads needed - using existing ComfyUI components!")
+                # 使用ComfyUI模式
+                model_info = {
+                    'path': model_path,
+                    'type': model_type
+                }
                 
-                # 标记为延迟加载模式
-                self.model_wrapper = "deferred_loading"
-                logger.info(f"[GPU {self.gpu_id}] ✅ Deferred loading mode enabled for safetensors")
-                return "deferred_loading"
+                if self._init_comfyui_models(model_info):
+                    logger.info(f"[GPU {self.gpu_id}] ✅ ComfyUI mode activated")
+                    return "comfyui_mode"
+                else:
+                    logger.warning(f"[GPU {self.gpu_id}] ComfyUI mode failed, using deferred loading")
+                    self.model_wrapper = "deferred_loading"
+                    return "deferred_loading"
                         
             elif os.path.isdir(model_path):
                 # Diffusers格式目录 - 直接使用原有逻辑
                 logger.info(f"[GPU {self.gpu_id}] Detected diffusers format")
+                
+                # 初始化engine_config（如果还没有的话）
+                if not hasattr(self, 'engine_config'):
+                    from xfuser import xFuserArgs
+                    xfuser_args = xFuserArgs(
+                        model=model_path,
+                        height=1024,
+                        width=1024,
+                        num_inference_steps=20,
+                        guidance_scale=3.5,
+                        output_type="latent",
+                        tensor_parallel_degree=self.world_size,
+                        use_ray=True,
+                        ray_world_size=self.world_size
+                    )
+                    self.engine_config = xfuser_args.create_config()
                 
                 from xfuser import xFuserFluxPipeline
                 from diffusers import FluxPipeline

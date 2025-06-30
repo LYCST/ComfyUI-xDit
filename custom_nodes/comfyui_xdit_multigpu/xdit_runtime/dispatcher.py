@@ -356,15 +356,15 @@ class XDiTDispatcher:
             return "failed"
 
     def run_inference(self, 
-                     model_state_dict: Dict,
-                     conditioning_positive: Any,
-                     conditioning_negative: Any,
-                     latent_samples: torch.Tensor,
-                     num_inference_steps: int = 20,
-                     guidance_scale: float = 8.0,
-                     seed: int = 42,
-                     comfyui_vae: Any = None,
-                     comfyui_clip: Any = None) -> Optional[torch.Tensor]:
+                    model_state_dict: Dict,
+                    conditioning_positive: Any,
+                    conditioning_negative: Any,
+                    latent_samples: torch.Tensor,
+                    num_inference_steps: int = 20,
+                    guidance_scale: float = 8.0,
+                    seed: int = 42,
+                    comfyui_vae: Any = None,
+                    comfyui_clip: Any = None) -> Optional[torch.Tensor]:
         """Run inference using the dispatcher with ComfyUI model integration"""
         try:
             if not self.is_initialized:
@@ -529,7 +529,7 @@ class XDiTDispatcher:
             logger.error(f"Error during inference: {e}")
             logger.exception("Full traceback:")
             return None
-    
+
     def get_status(self) -> Dict[str, Any]:
         """Get dispatcher status"""
         status = {

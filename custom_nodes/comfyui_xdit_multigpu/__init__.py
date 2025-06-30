@@ -11,11 +11,21 @@ import sys
 import logging
 from pathlib import Path
 
+
 # 设置环境变量来解决tokenizer警告
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # 设置日志
 logger = logging.getLogger(__name__)
+
+# 添加下面这些行：
+# 调试控制
+DEBUG_LEVEL = os.environ.get('XDIT_DEBUG', '0')
+if DEBUG_LEVEL == '1':
+    logging.getLogger("xfuser").setLevel(logging.DEBUG)
+    logging.getLogger("ray").setLevel(logging.DEBUG)
+    logging.getLogger("torch.distributed").setLevel(logging.DEBUG)
+    logger.info("🔍 xDiT Debug mode enabled")
 
 # 检查xDiT可用性
 XDIT_AVAILABLE = False
