@@ -64,26 +64,49 @@ class ComfyUIModelWrapper:
                     )
                     self.unet.load_state_dict(sd, strict=False)
                     logger.info("✅ Loaded FLUX transformer")
+                else:
+                    logger.warning("Unknown model format - no transformer_blocks found")
+                    return False
             
-            # 2. 加载VAE（如果提供）
-            if self.vae_path:
-                logger.info(f"Loading VAE from: {self.vae_path}")
-                vae_sd = comfy.utils.load_torch_file(self.vae_path)
-                self.vae = comfy.sd.VAE(sd=vae_sd)
-                logger.info("✅ Loaded VAE")
+            # 2. 加载VAE（如果提供且存在）
+            if self.vae_path and os.path.exists(self.vae_path):
+                try:
+                    logger.info(f"Loading VAE from: {self.vae_path}")
+                    vae_sd = comfy.utils.load_torch_file(self.vae_path)
+                    self.vae = comfy.sd.VAE(sd=vae_sd)
+                    logger.info("✅ Loaded VAE")
+                except Exception as e:
+                    logger.warning(f"Failed to load VAE: {e}")
+            else:
+                logger.info("VAE not provided or not found - will use ComfyUI VAE")
             
-            # 3. 加载CLIP（如果提供）
+            # 3. 加载CLIP（如果提供且存在）
             if self.clip_paths:
-                logger.info(f"Loading CLIP from: {self.clip_paths}")
-                # 使用ComfyUI的CLIP加载方法
-                self.clip = comfy.sd.load_clip(
-                    ckpt_paths=self.clip_paths,
-                    embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                    clip_type=comfy.sd.CLIPType.FLUX
-                )
-                logger.info("✅ Loaded CLIP")
+                existing_clip_paths = [p for p in self.clip_paths if os.path.exists(p)]
+                if existing_clip_paths:
+                    try:
+                        logger.info(f"Loading CLIP from: {existing_clip_paths}")
+                        # 使用ComfyUI的CLIP加载方法
+                        self.clip = comfy.sd.load_clip(
+                            ckpt_paths=existing_clip_paths,
+                            embedding_directory=folder_paths.get_folder_paths("embeddings"),
+                            clip_type=comfy.sd.CLIPType.FLUX
+                        )
+                        logger.info("✅ Loaded CLIP")
+                    except Exception as e:
+                        logger.warning(f"Failed to load CLIP: {e}")
+                else:
+                    logger.info("CLIP files not found - will use ComfyUI CLIP")
+            else:
+                logger.info("CLIP not provided - will use ComfyUI CLIP")
             
-            return True
+            # 只要UNet加载成功就返回True
+            if self.unet is not None:
+                logger.info("✅ ComfyUI model wrapper ready (UNet loaded)")
+                return True
+            else:
+                logger.error("Failed to load UNet/Transformer")
+                return False
             
         except Exception as e:
             logger.error(f"Failed to load components: {e}")
