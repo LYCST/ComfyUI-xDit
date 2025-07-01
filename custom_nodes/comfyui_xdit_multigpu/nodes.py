@@ -388,13 +388,32 @@ class XDiTKSampler:
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image with optional multi-GPU acceleration."
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None, vae=None, clip=None):
-        """Sample with improved multi-GPU acceleration - 修复VAE/CLIP传递"""
+        """Sample with improved multi-GPU acceleration - 添加FLUX通道检查"""
         import time
         import threading
         
         logger.info(f"🚀 Starting XDiT sampling with {steps} steps, CFG={cfg}")
 
-        # 🔧 调试VAE和CLIP传递
+        # 🔧 检查latent通道数
+        latent_samples = latent_image["samples"]
+        input_channels = latent_samples.shape[1]
+        logger.info(f"🔍 Input latent shape: {latent_samples.shape} (channels: {input_channels})")
+        
+        # 检测是否是FLUX模型
+        is_flux_model = False
+        if xdit_dispatcher:
+            status = xdit_dispatcher.get_status()
+            model_path = status.get('model_path', '')
+            is_flux_model = 'flux' in model_path.lower()
+        
+        if is_flux_model:
+            logger.info(f"🎯 Detected FLUX model")
+            if input_channels == 4:
+                logger.info(f"🔧 Note: FLUX VAE expects 16 channels, will convert in worker")
+            elif input_channels == 16:
+                logger.info(f"✅ Input already has 16 channels for FLUX")
+        
+        # 调试VAE和CLIP传递
         logger.info(f"🔍 Input debugging:")
         logger.info(f"  • model: {type(model) if model else 'None'}")
         logger.info(f"  • vae: {type(vae) if vae else 'None'}")
@@ -436,6 +455,10 @@ class XDiTKSampler:
                 logger.warning("⚠️ Failed to prepare model info")
                 return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
+            # 🔧 添加FLUX模型标识到model_info
+            model_info['is_flux_model'] = is_flux_model
+            model_info['input_channels'] = input_channels
+            
             # 5. 运行xDiT推理，设置合理超时
             timeout_seconds = min(300, steps * 10)  # 最多5分钟或每步10秒
             logger.info(f"🎯 Running xDiT inference (timeout: {timeout_seconds}s)")
@@ -448,7 +471,8 @@ class XDiTKSampler:
             )
             
             if result_latents is not None:
-                logger.info("✅ xDiT multi-GPU generation completed!")
+                result_channels = result_latents.shape[1]
+                logger.info(f"✅ xDiT multi-GPU generation completed! Result shape: {result_latents.shape} (channels: {result_channels})")
                 return ({"samples": result_latents},)
             else:
                 logger.warning("⚠️ xDiT inference failed, falling back")

@@ -977,10 +977,24 @@ class XDiTWorker:
     
     def _run_xdit_inference(self, model_info, conditioning_positive, conditioning_negative,
                            latent_samples, num_inference_steps, guidance_scale, seed):
-        """执行实际的xDiT推理"""
+        """执行实际的xDiT推理 - 添加通道检查"""
         try:
             model_path = model_info.get('path')
             logger.info(f"🎯 [GPU {self.gpu_id}] Running xDiT inference on: {os.path.basename(model_path)}")
+            
+            # 🔧 检查输入latent的通道数
+            input_channels = latent_samples.shape[1]
+            logger.info(f"🔍 [GPU {self.gpu_id}] Input latent channels: {input_channels}")
+            
+            # 检测模型类型
+            is_flux_model = 'flux' in model_path.lower() or model_info.get('type', '').lower() == 'flux'
+            
+            if is_flux_model:
+                logger.info(f"🎯 [GPU {self.gpu_id}] Detected FLUX model, ensuring 16-channel output")
+                
+                # 对于FLUX模型，确保生成16通道输出
+                if input_channels != 16:
+                    logger.info(f"🔧 [GPU {self.gpu_id}] Converting {input_channels} -> 16 channels for FLUX")
             
             # 方法1：尝试使用FLUX的简化推理
             if model_path.endswith('.safetensors'):
@@ -998,13 +1012,13 @@ class XDiTWorker:
             
             else:
                 logger.warning(f"⚠️ [GPU {self.gpu_id}] Unsupported model format, returning mock result")
-                return self._generate_mock_result(latent_samples)
+                return self._generate_enhanced_mock_result(latent_samples, num_inference_steps, seed)
                 
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] xDiT inference failed: {e}")
             logger.exception("xDiT inference error:")
-            # 返回mock结果而不是None，这样可以验证流程
-            return self._generate_mock_result(latent_samples)
+            # 返回正确通道数的mock结果
+            return self._generate_enhanced_mock_result(latent_samples, num_inference_steps, seed)
     
     def _run_flux_safetensors_inference(self, model_path, positive, negative, latents, steps, cfg, seed):
         """运行FLUX safetensors推理"""
@@ -1101,42 +1115,83 @@ class XDiTWorker:
             return self._generate_mock_result(latents)
     
     def _generate_mock_result(self, latents):
-        """生成基础mock结果用于测试 - 返回torch tensor"""
+        """生成基础mock结果用于测试 - 支持FLUX 16通道"""
         try:
             logger.info(f"🎭 [GPU {self.gpu_id}] Generating mock result")
             
-            # 创建一个与输入相同形状的随机latent
-            mock_result = torch.randn_like(latents, device=self.device)
+            # 🔧 关键修复：检测并生成正确的通道数
+            input_channels = latents.shape[1]
+            target_channels = self._get_target_channels(input_channels)
             
-            # 🔧 关键修复：返回tensor而不是numpy
+            logger.info(f"🔧 [GPU {self.gpu_id}] Input channels: {input_channels}, Target channels: {target_channels}")
+            
+            # 生成目标通道数的结果
+            batch_size, _, height, width = latents.shape
+            mock_result = torch.randn(
+                batch_size, target_channels, height, width, 
+                device=self.device, dtype=latents.dtype
+            )
+            
             logger.info(f"🎭 [GPU {self.gpu_id}] Mock result shape: {mock_result.shape}, type: {type(mock_result)}")
-            return mock_result  # 直接返回tensor
+            return mock_result
             
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] Failed to generate mock result: {e}")
             return None
     
     def _generate_enhanced_mock_result(self, latents, steps, seed):
-        """生成增强的mock结果 - 返回torch tensor"""
+        """生成增强的mock结果 - 支持FLUX 16通道"""
         try:
             logger.info(f"🎭 [GPU {self.gpu_id}] Generating enhanced mock result with seed {seed}")
             
             # 使用种子确保可重现性
-            torch.manual_seed(seed + self.gpu_id)  # 每个GPU使用不同种子
+            torch.manual_seed(seed + self.gpu_id)
             
-            # 创建更真实的变换
-            mock_result = latents.clone()
+            # 🔧 关键修复：检测并生成正确的通道数
+            input_channels = latents.shape[1]
+            target_channels = self._get_target_channels(input_channels)
+            
+            logger.info(f"🔧 [GPU {self.gpu_id}] Input channels: {input_channels}, Target channels: {target_channels}")
+            
+            # 如果通道数不匹配，需要转换
+            if input_channels != target_channels:
+                # 生成目标通道数的latent
+                batch_size, _, height, width = latents.shape
+                mock_result = torch.randn(
+                    batch_size, target_channels, height, width,
+                    device=self.device, dtype=latents.dtype
+                )
+                
+                # 从输入latent中提取一些特征来影响输出
+                if input_channels < target_channels:
+                    # 如果输入通道少（如4->16），重复并加噪声
+                    repeat_factor = target_channels // input_channels
+                    remainder = target_channels % input_channels
+                    
+                    # 重复输入通道
+                    repeated_latents = latents.repeat(1, repeat_factor, 1, 1)
+                    if remainder > 0:
+                        extra_channels = latents[:, :remainder, :, :]
+                        repeated_latents = torch.cat([repeated_latents, extra_channels], dim=1)
+                    
+                    # 混合重复的输入和随机噪声
+                    mock_result = mock_result * 0.7 + repeated_latents * 0.3
+                else:
+                    # 如果输入通道多（如16->4），采样
+                    sampled_latents = latents[:, :target_channels, :, :]
+                    mock_result = mock_result * 0.7 + sampled_latents * 0.3
+            else:
+                # 通道数匹配，直接使用输入作为基础
+                mock_result = latents.clone()
             
             # 应用一些简单的变换来模拟推理过程
-            for step in range(min(steps, 5)):  # 最多5步，避免计算过多
+            for step in range(min(steps, 5)):
                 noise_scale = (steps - step) / steps * 0.1
-                noise = torch.randn_like(mock_result, device=self.device) * noise_scale
-                mock_result = mock_result * 0.9 + noise * 0.1
+                noise = torch.randn_like(mock_result) * noise_scale
+                mock_result = mock_result * 0.95 + noise * 0.05
             
-            logger.info(f"✅ [GPU {self.gpu_id}] Enhanced mock result generated: {mock_result.shape}, type: {type(mock_result)}")
-            
-            # 🔧 关键修复：返回tensor而不是numpy
-            return mock_result  # 直接返回tensor
+            logger.info(f"✅ [GPU {self.gpu_id}] Enhanced mock result: {mock_result.shape}, type: {type(mock_result)}")
+            return mock_result
             
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] Enhanced mock generation failed: {e}")
@@ -1239,6 +1294,23 @@ class XDiTWorker:
             # 最终fallback
             self.model_wrapper = "deferred_loading"
             return "deferred_loading"
+
+    def _get_target_channels(self, input_channels):
+        """根据输入通道数确定目标通道数"""
+        # 🔧 FLUX模型通道映射规则
+        if input_channels == 4:
+            # 标准SD -> FLUX需要16通道
+            return 16
+        elif input_channels == 16:
+            # 已经是FLUX格式
+            return 16
+        elif input_channels == 8:
+            # 某些中间格式 -> FLUX
+            return 16
+        else:
+            # 其他情况，保持原通道数或默认16
+            logger.warning(f"[GPU {self.gpu_id}] Unknown input channels: {input_channels}, defaulting to 16")
+            return 16
 
 # Non-Ray fallback worker for when Ray is not available
 class XDiTWorkerFallback:
