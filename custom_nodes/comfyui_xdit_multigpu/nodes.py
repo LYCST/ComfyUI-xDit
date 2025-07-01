@@ -388,13 +388,13 @@ class XDiTKSampler:
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image with optional multi-GPU acceleration."
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None, vae=None, clip=None):
-        """Sample with improved multi-GPU acceleration"""
+        """Sample with improved multi-GPU acceleration - 修复VAE/CLIP传递"""
         import time
         import threading
         
         logger.info(f"🚀 Starting XDiT sampling with {steps} steps, CFG={cfg}")
 
-         # 🔧 调试VAE和CLIP传递
+        # 🔧 调试VAE和CLIP传递
         logger.info(f"🔍 Input debugging:")
         logger.info(f"  • model: {type(model) if model else 'None'}")
         logger.info(f"  • vae: {type(vae) if vae else 'None'}")
@@ -436,9 +436,11 @@ class XDiTKSampler:
             timeout_seconds = min(300, steps * 10)  # 最多5分钟或每步10秒
             logger.info(f"🎯 Running xDiT inference (timeout: {timeout_seconds}s)")
             
+            # 🔧 关键修复：传递vae和clip参数到_run_xdit_with_timeout
             result_latents = self._run_xdit_with_timeout(
                 xdit_dispatcher, model_info, positive, negative, 
-                latent_image["samples"], steps, cfg, seed, timeout_seconds
+                latent_image["samples"], steps, cfg, seed, timeout_seconds,
+                vae=vae, clip=clip  # 🔧 明确传递VAE和CLIP参数
             )
             
             if result_latents is not None:
@@ -622,8 +624,8 @@ class XDiTKSampler:
             logger.exception("Full traceback:")
             return None
              
-    def _run_xdit_with_timeout(self, dispatcher, model_info, positive, negative, latent_samples, steps, cfg, seed, timeout_seconds):
-        """运行xDiT推理，带超时控制"""
+    def _run_xdit_with_timeout(self, dispatcher, model_info, positive, negative, latent_samples, steps, cfg, seed, timeout_seconds, vae=None, clip=None):
+        """运行xDiT推理，带超时控制 - 修复VAE作用域"""
         import threading
         import queue
         
@@ -669,8 +671,8 @@ class XDiTKSampler:
                     num_inference_steps=steps,
                     guidance_scale=cfg,
                     seed=seed,
-                    comfyui_vae=vae,  # 🔧 传递VAE
-                    comfyui_clip=clip  # 🔧 传递CLIP
+                    comfyui_vae=vae,  # 🔧 使用参数传递的VAE
+                    comfyui_clip=clip  # 🔧 使用参数传递的CLIP
                 )
                 result_queue.put(('success', result))
             except Exception as e:
