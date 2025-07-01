@@ -98,7 +98,15 @@ class XDiTCheckpointLoader:
                     
                     # Parse scheduling strategy
                     try:
-                        scheduling = SchedulingStrategy(scheduling_strategy)
+                        scheduling_enum = None
+                        for strategy in SchedulingStrategy:
+                            if strategy.value == scheduling_strategy:
+                                scheduling_enum = strategy
+                                break
+
+                        if scheduling_enum is None:
+                            logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
+                            scheduling_enum = SchedulingStrategy.ROUND_ROBIN
                     except ValueError:
                         logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
                         scheduling = SchedulingStrategy.ROUND_ROBIN
@@ -106,9 +114,9 @@ class XDiTCheckpointLoader:
                     # Create dispatcher
                     dispatcher = XDiTDispatcher(
                         gpu_devices=gpu_list,
-                        model_path=ckpt_path,
+                        model_path=unet_path,
                         strategy=parallel_strategy,
-                        scheduling_strategy=scheduling
+                        scheduling_strategy=scheduling_enum
                     )
                     
                     # Initialize dispatcher
@@ -183,7 +191,15 @@ class XDiTUNetLoader:
                     
                     # Parse scheduling strategy
                     try:
-                        scheduling = SchedulingStrategy(scheduling_strategy)
+                        scheduling_enum = None
+                        for strategy in SchedulingStrategy:
+                            if strategy.value == scheduling_strategy:
+                                scheduling_enum = strategy
+                                break
+
+                        if scheduling_enum is None:
+                            logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
+                            scheduling_enum = SchedulingStrategy.ROUND_ROBIN
                     except ValueError:
                         logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
                         scheduling = SchedulingStrategy.ROUND_ROBIN
@@ -193,7 +209,7 @@ class XDiTUNetLoader:
                         gpu_devices=gpu_list,
                         model_path=unet_path,
                         strategy=parallel_strategy,
-                        scheduling_strategy=scheduling
+                        scheduling_strategy=scheduling_enum
                     )
                     
                     # Initialize dispatcher

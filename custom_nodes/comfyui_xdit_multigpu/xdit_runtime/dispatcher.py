@@ -173,6 +173,45 @@ class XDiTDispatcher:
     def initialize(self) -> bool:
         """改进的初始化方法"""
         try:
+            logger.info("=" * 60)
+            logger.info("🚀 开始初始化XDiT Dispatcher")
+            logger.info(f"  • GPU设备: {self.gpu_devices}")
+            logger.info(f"  • 并行策略: {self.strategy}")
+            logger.info(f"  • 调度策略: {self.scheduling_strategy.value}")
+            logger.info(f"  • 模型路径: {self.model_path}")
+            logger.info(f"  • World size: {self.world_size}")
+            logger.info("=" * 60)
+            
+            # 检查GPU可用性
+            import torch
+            if not torch.cuda.is_available():
+                logger.error("❌ CUDA不可用")
+                return False
+            
+            available_gpus = torch.cuda.device_count()
+            logger.info(f"📊 检测到{available_gpus}个GPU")
+            
+            for gpu_id in self.gpu_devices:
+                if gpu_id >= available_gpus:
+                    logger.error(f"❌ GPU {gpu_id}不存在（只有{available_gpus}个GPU可用）")
+                    return False
+                
+                # 检查GPU内存
+                try:
+                    torch.cuda.set_device(gpu_id)
+                    memory_total = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**3
+                    memory_free = (torch.cuda.get_device_properties(gpu_id).total_memory - torch.cuda.memory_allocated(gpu_id)) / 1024**3
+                    logger.info(f"  • GPU {gpu_id}: {memory_free:.1f}GB 可用 / {memory_total:.1f}GB 总计")
+                except Exception as e:
+                    logger.warning(f"  • GPU {gpu_id}: 无法获取内存信息 - {e}")
+            
+            # 检查模型文件
+            if not os.path.exists(self.model_path):
+                logger.error(f"❌ 模型文件不存在: {self.model_path}")
+                return False
+            
+            model_size = os.path.getsize(self.model_path) / 1024**3
+            logger.info(f"📁 模型文件: {model_size:.1f}GB")
             if not RAY_AVAILABLE:
                 logger.warning("Ray不可用，使用fallback模式")
                 return self._initialize_fallback()
@@ -187,9 +226,16 @@ class XDiTDispatcher:
                     dashboard_port=None  # 禁用dashboard节省内存
                 )
                 if not success:
-                    logger.error("Ray初始化失败")
-                    return self._initialize_fallback()
-            
+                    logger.error("❌ Ray初始化失败")
+                    return False
+                logger.info("✅ Ray初始化成功")
+            else:
+                logger.info("✅ Ray已经运行")
+
+            # 显示Ray状态
+            ray_info = get_ray_info()
+            logger.info(f"📊 Ray状态: {ray_info}")
+
             # 2. 分阶段创建workers
             logger.info(f"创建{len(self.gpu_devices)}个GPU workers...")
             
@@ -253,7 +299,7 @@ class XDiTDispatcher:
             
             self.is_initialized = True
             logger.info(f"✅ Dispatcher初始化完成，{len(self.workers)}个workers就绪")
-            return True
+            return True   
             
         except Exception as e:
             logger.error(f"Dispatcher初始化失败: {e}")
