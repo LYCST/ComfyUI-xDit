@@ -419,7 +419,7 @@ class XDiTKSampler:
             logger.info(f"✅ xDiT ready with {num_workers} workers")
             
             # 4. 准备模型信息 - 关键修复
-            model_info = self._prepare_model_info(model, vae, clip)
+            model_info = self._prepare_model_info(model, vae, clip, xdit_dispatcher)
             if model_info is None:
                 logger.warning("⚠️ Failed to prepare model info")
                 return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
@@ -445,64 +445,169 @@ class XDiTKSampler:
             logger.exception("Full traceback:")
             return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
 
-    def _prepare_model_info(self, model, vae, clip):
-        """准备模型信息 - 关键修复"""
+    def _debug_model_objects(self, model, vae, clip, xdit_dispatcher):
+        """调试模型对象，查看它们包含的信息"""
+        logger.info("=" * 80)
+        logger.info("🔍 DEBUGGING MODEL OBJECTS")
+        logger.info("=" * 80)
+        
+        # 调试model对象
+        logger.info(f"📋 MODEL OBJECT DEBUG:")
+        logger.info(f"  Type: {type(model)}")
+        logger.info(f"  Module: {getattr(type(model), '__module__', 'Unknown')}")
+        
+        # 列出model的所有属性（非私有）
+        model_attrs = [attr for attr in dir(model) if not attr.startswith('_')]
+        logger.info(f"  Attributes ({len(model_attrs)}): {model_attrs[:20]}...")  # 只显示前20个
+        
+        # 查找可能包含路径的属性
+        path_related_attrs = [attr for attr in model_attrs if any(keyword in attr.lower() for keyword in ['path', 'file', 'model', 'checkpoint', 'load'])]
+        logger.info(f"  Path-related attributes: {path_related_attrs}")
+        
+        # 检查这些属性的值
+        for attr in path_related_attrs[:10]:  # 只检查前10个
+            try:
+                value = getattr(model, attr)
+                if isinstance(value, str):
+                    logger.info(f"    {attr}: '{value}'")
+                elif hasattr(value, '__dict__'):
+                    logger.info(f"    {attr}: <object {type(value)}> with attributes: {list(vars(value).keys())[:5]}...")
+                else:
+                    logger.info(f"    {attr}: {type(value)} = {str(value)[:100]}...")
+            except Exception as e:
+                logger.info(f"    {attr}: Error accessing - {e}")
+        
+        # 特别检查model.model（嵌套对象）
+        if hasattr(model, 'model'):
+            inner_model = model.model
+            logger.info(f"  Inner model type: {type(inner_model)}")
+            inner_attrs = [attr for attr in dir(inner_model) if not attr.startswith('_')]
+            inner_path_attrs = [attr for attr in inner_attrs if any(keyword in attr.lower() for keyword in ['path', 'file', 'model', 'checkpoint'])]
+            logger.info(f"  Inner model path-related attributes: {inner_path_attrs}")
+            
+            for attr in inner_path_attrs[:5]:
+                try:
+                    value = getattr(inner_model, attr)
+                    if isinstance(value, str):
+                        logger.info(f"    inner.{attr}: '{value}'")
+                except Exception as e:
+                    logger.info(f"    inner.{attr}: Error - {e}")
+        
+        # 调试VAE对象
+        logger.info(f"📋 VAE OBJECT DEBUG:")
+        if vae is not None:
+            logger.info(f"  Type: {type(vae)}")
+            vae_attrs = [attr for attr in dir(vae) if not attr.startswith('_')]
+            vae_path_attrs = [attr for attr in vae_attrs if any(keyword in attr.lower() for keyword in ['path', 'file'])]
+            logger.info(f"  Path-related attributes: {vae_path_attrs}")
+        else:
+            logger.info("  VAE is None")
+        
+        # 调试CLIP对象
+        logger.info(f"📋 CLIP OBJECT DEBUG:")
+        if clip is not None:
+            logger.info(f"  Type: {type(clip)}")
+            clip_attrs = [attr for attr in dir(clip) if not attr.startswith('_')]
+            clip_path_attrs = [attr for attr in clip_attrs if any(keyword in attr.lower() for keyword in ['path', 'file'])]
+            logger.info(f"  Path-related attributes: {clip_path_attrs}")
+        else:
+            logger.info("  CLIP is None")
+        
+        # 调试dispatcher对象
+        logger.info(f"📋 DISPATCHER OBJECT DEBUG:")
+        if xdit_dispatcher is not None:
+            logger.info(f"  Type: {type(xdit_dispatcher)}")
+            logger.info(f"  Has model_path: {hasattr(xdit_dispatcher, 'model_path')}")
+            if hasattr(xdit_dispatcher, 'model_path'):
+                logger.info(f"  Dispatcher model_path: '{xdit_dispatcher.model_path}'")
+            
+            try:
+                status = xdit_dispatcher.get_status()
+                logger.info(f"  Status keys: {list(status.keys())}")
+                if 'model_path' in status:
+                    logger.info(f"  Status model_path: '{status['model_path']}'")
+            except Exception as e:
+                logger.info(f"  Error getting status: {e}")
+        else:
+            logger.info("  Dispatcher is None")
+        
+        logger.info("=" * 80)
+    
+    def _prepare_model_info(self, model, vae, clip, xdit_dispatcher=None):
+        """准备模型信息 - 带调试版本"""
         try:
-            # 尝试从model对象获取路径
+            # 首先运行调试
+            self._debug_model_objects(model, vae, clip, xdit_dispatcher)
+            
             model_path = None
             
-            # 方法1: 检查model的model_path属性
-            if hasattr(model, 'model_path'):
-                model_path = model.model_path
-            # 方法2: 检查model.model的path属性
-            elif hasattr(model, 'model') and hasattr(model.model, 'model_path'):
-                model_path = model.model.model_path
-            # 方法3: 检查load_device信息
-            elif hasattr(model, 'load_device'):
-                # 可能需要从其他地方获取路径
-                pass
+            # 方法1: 从dispatcher获取（最可靠）
+            if xdit_dispatcher is not None:
+                if hasattr(xdit_dispatcher, 'model_path'):
+                    model_path = xdit_dispatcher.model_path
+                    logger.info(f"✅ Got model path from dispatcher.model_path: {model_path}")
+                else:
+                    try:
+                        status = xdit_dispatcher.get_status()
+                        model_path = status.get('model_path')
+                        if model_path:
+                            logger.info(f"✅ Got model path from dispatcher status: {model_path}")
+                    except Exception as e:
+                        logger.warning(f"Error getting dispatcher status: {e}")
             
-            # 如果无法获取模型路径，尝试使用默认路径
-            if not model_path:
-                # 尝试从folder_paths获取最近的checkpoint
-                import folder_paths
-                checkpoints = folder_paths.get_filename_list("checkpoints")
-                if checkpoints:
-                    # 使用第一个找到的flux模型
-                    for ckpt in checkpoints:
-                        if 'flux' in ckpt.lower():
-                            model_path = folder_paths.get_full_path("checkpoints", ckpt)
+            # 方法2: 从model对象获取（备用）
+            if not model_path and model is not None:
+                logger.info("🔍 Trying to extract path from model object...")
+                
+                # 检查常见的路径属性
+                path_attrs = ['model_path', 'checkpoint_path', 'file_path', 'path', 'filename', 'model_file']
+                for attr in path_attrs:
+                    if hasattr(model, attr):
+                        potential_path = getattr(model, attr)
+                        if isinstance(potential_path, str) and os.path.exists(potential_path):
+                            model_path = potential_path
+                            logger.info(f"✅ Got model path from model.{attr}: {model_path}")
                             break
-                    if not model_path:
-                        model_path = folder_paths.get_full_path("checkpoints", checkpoints[0])
+                
+                # 检查嵌套的model对象
+                if not model_path and hasattr(model, 'model'):
+                    inner_model = model.model
+                    for attr in path_attrs:
+                        if hasattr(inner_model, attr):
+                            potential_path = getattr(inner_model, attr)
+                            if isinstance(potential_path, str) and os.path.exists(potential_path):
+                                model_path = potential_path
+                                logger.info(f"✅ Got model path from model.model.{attr}: {model_path}")
+                                break
             
+            # 验证路径
             if not model_path:
-                logger.error("无法确定模型路径")
+                logger.error("❌ 无法从任何源获取模型路径")
                 return None
             
-            logger.info(f"📁 Model path: {model_path}")
+            if not os.path.exists(model_path):
+                logger.error(f"❌ 模型文件不存在: {model_path}")
+                return None
             
-            # 构建完整的模型信息
+            # 构建模型信息
             model_info = {
                 'path': model_path,
-                'type': 'flux',  # 假设是FLUX模型
+                'type': 'flux',
                 'vae': vae,
                 'clip': clip,
-                'model_object': model  # 添加原始model对象
+                'model_object': model,
+                'dispatcher': xdit_dispatcher
             }
             
-            # 验证文件存在
-            if not os.path.exists(model_path):
-                logger.error(f"模型文件不存在: {model_path}")
-                return None
-            
-            logger.info("✅ Model info prepared successfully")
+            logger.info(f"✅ Model info prepared successfully!")
+            logger.info(f"📁 Final model path: {model_path}")
             return model_info
             
         except Exception as e:
-            logger.error(f"准备模型信息失败: {e}")
+            logger.error(f"❌ Failed to prepare model info: {e}")
+            logger.exception("Full traceback:")
             return None
-    
+             
     def _run_xdit_with_timeout(self, dispatcher, model_info, positive, negative, latent_samples, steps, cfg, seed, timeout_seconds):
         """运行xDiT推理，带超时控制"""
         import threading

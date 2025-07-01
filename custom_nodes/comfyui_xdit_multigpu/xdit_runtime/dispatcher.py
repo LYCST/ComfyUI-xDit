@@ -582,7 +582,8 @@ class XDiTDispatcher:
             "num_workers": len(self.workers),
             "scheduling_strategy": self.scheduling_strategy.value,
             "worker_loads": self.worker_loads.copy(),
-            "gpu_devices": self.gpu_devices
+            "gpu_devices": self.gpu_devices,
+            "model_path": self.model_path  # 添加这一行！
         }
         
         # Get detailed GPU info
