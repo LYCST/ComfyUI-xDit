@@ -338,20 +338,43 @@ class XDiTDispatcher:
             if not self.is_initialized or not self.workers:
                 logger.error("Dispatcher未初始化")
                 return None
-            
+
             # 更新model_info以包含ComfyUI组件
             enhanced_model_info = model_info.copy()
+
+            # 从方法参数获取VAE和CLIP
+            actual_vae = comfyui_vae
+            actual_clip = comfyui_clip
+            
+            # 如果参数中没有，尝试从model_info中获取
+            if actual_vae is None:
+                actual_vae = model_info.get('vae')
+            if actual_clip is None:
+                actual_clip = model_info.get('clip')
+
+
             enhanced_model_info.update({
-                'vae': comfyui_vae,
-                'clip': comfyui_clip,
-                'comfyui_mode': True
+                'vae': actual_vae,
+                'clip': actual_clip,
+                'comfyui_mode': True,
+                'vae_available': actual_vae is not None,
+                'clip_available': actual_clip is not None
             })
+
             
             # 🔧 处理从KSampler传来的序列化数据
             logger.info(f"🎯 运行推理: {num_inference_steps}步, CFG={guidance_scale}")
             logger.info(f"  • Workers: {len(self.workers)}")
-            logger.info(f"  • VAE: {'✅' if comfyui_vae else '❌'}")
-            logger.info(f"  • CLIP: {'✅' if comfyui_clip else '❌'}")
+            logger.info(f"  • VAE: {'✅' if actual_vae is not None else '❌'}")
+            logger.info(f"  • CLIP: {'✅' if actual_clip is not None else '❌'}")
+
+                        # 如果VAE和CLIP仍然为空，尝试调试
+            if actual_vae is None or actual_clip is None:
+                logger.warning("🔍 VAE/CLIP debugging:")
+                logger.warning(f"  • comfyui_vae parameter: {type(comfyui_vae) if comfyui_vae else 'None'}")
+                logger.warning(f"  • comfyui_clip parameter: {type(comfyui_clip) if comfyui_clip else 'None'}")
+                logger.warning(f"  • model_info keys: {list(model_info.keys())}")
+                logger.warning("  • Check your ComfyUI workflow connections!")
             
             # 🔧 将numpy数组转换回tensor（如果需要）
             try:

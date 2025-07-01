@@ -393,6 +393,13 @@ class XDiTKSampler:
         import threading
         
         logger.info(f"🚀 Starting XDiT sampling with {steps} steps, CFG={cfg}")
+
+         # 🔧 调试VAE和CLIP传递
+        logger.info(f"🔍 Input debugging:")
+        logger.info(f"  • model: {type(model) if model else 'None'}")
+        logger.info(f"  • vae: {type(vae) if vae else 'None'}")
+        logger.info(f"  • clip: {type(clip) if clip else 'None'}")
+        logger.info(f"  • xdit_dispatcher: {type(xdit_dispatcher) if xdit_dispatcher else 'None'}")
         
         try:
             # 1. 首先验证基本组件
@@ -410,8 +417,9 @@ class XDiTKSampler:
             if not status.get("is_initialized", False):
                 logger.warning("⚠️ xDiT dispatcher not initialized")
                 return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
-            
+
             num_workers = status.get("num_workers", 0)
+            logger.info(f"✅ xDiT ready with {num_workers} workers")
             if num_workers < 2:
                 logger.info(f"⚠️ Only {num_workers} workers available, using standard sampling")
                 return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
@@ -660,7 +668,9 @@ class XDiTKSampler:
                     latent_samples=latent_samples,
                     num_inference_steps=steps,
                     guidance_scale=cfg,
-                    seed=seed
+                    seed=seed,
+                    comfyui_vae=vae,  # 🔧 传递VAE
+                    comfyui_clip=clip  # 🔧 传递CLIP
                 )
                 result_queue.put(('success', result))
             except Exception as e:
