@@ -366,131 +366,191 @@ class XDiTKSampler:
     DESCRIPTION = "Uses the provided model, positive and negative conditioning to denoise the latent image with optional multi-GPU acceleration."
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise=1.0, xdit_dispatcher=None, vae=None, clip=None):
-        """Sample with optional multi-GPU acceleration"""
+        """Sample with improved multi-GPU acceleration"""
         import time
         import threading
         
-        # 设置超时机制
-        timeout_seconds = 180  # 3分钟超时
-        
-        def timeout_handler():
-            logger.warning(f"⏰ XDiT sampling timed out after {timeout_seconds} seconds")
-            raise TimeoutError("XDiT sampling timed out")
-        
-        # 创建超时线程
-        timeout_timer = threading.Timer(timeout_seconds, timeout_handler)
+        logger.info(f"🚀 Starting XDiT sampling with {steps} steps, CFG={cfg}")
         
         try:
-            # 🔧 首先检查模型是否有效
+            # 1. 首先验证基本组件
             if model is None:
-                logger.error("Model is None, cannot proceed with sampling")
-                return (latent_image, )
+                logger.error("❌ Model is None, cannot proceed")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
-            # 检查dispatcher是否可用
+            # 2. 检查xDiT dispatcher
             if xdit_dispatcher is None:
-                logger.info("No xDiT dispatcher provided, using standard ComfyUI sampling")
-                raise Exception("No xDiT dispatcher")
+                logger.info("⚠️ No xDiT dispatcher, using standard sampling")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
-            # 获取模型路径信息
-            model_path = None
-            if hasattr(model, 'model_path'):
-                model_path = model.model_path
-            elif hasattr(model, 'load_model_weights'):
-                # 尝试从model对象获取路径
-                model_path = getattr(model.load_model_weights, 'model_path', None)
+            # 3. 验证dispatcher状态
+            status = xdit_dispatcher.get_status()
+            if not status.get("is_initialized", False):
+                logger.warning("⚠️ xDiT dispatcher not initialized")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
-            # 如果找到了模型路径，告诉dispatcher使用ComfyUI模式
-            if model_path and model_path.endswith('.safetensors'):
-                logger.info(f"Detected ComfyUI model: {model_path}")
-                # 设置dispatcher使用ComfyUI模式
-                if hasattr(xdit_dispatcher, 'set_comfyui_mode'):
-                    xdit_dispatcher.set_comfyui_mode(True)
+            num_workers = status.get("num_workers", 0)
+            if num_workers < 2:
+                logger.info(f"⚠️ Only {num_workers} workers available, using standard sampling")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
-            logger.info(f"Attempting xDiT multi-GPU acceleration: {steps} steps, CFG={cfg}")
+            logger.info(f"✅ xDiT ready with {num_workers} workers")
             
-            # 🎯 记录ComfyUI组件可用性
-            logger.info(f"🎯 ComfyUI components available:")
-            logger.info(f"  • VAE: {'✅ Available' if vae is not None else '❌ Missing'}")
-            logger.info(f"  • CLIP: {'✅ Available' if clip is not None else '❌ Missing'}")
+            # 4. 准备模型信息 - 关键修复
+            model_info = self._prepare_model_info(model, vae, clip)
+            if model_info is None:
+                logger.warning("⚠️ Failed to prepare model info")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
             
-            # 启动超时计时器
-            timeout_timer.start()
+            # 5. 运行xDiT推理，设置合理超时
+            timeout_seconds = min(300, steps * 10)  # 最多5分钟或每步10秒
+            logger.info(f"🎯 Running xDiT inference (timeout: {timeout_seconds}s)")
             
-            try:
-                # Try xDiT multi-GPU inference with ComfyUI components
-                result_latents = xdit_dispatcher.run_inference(
-                    model_state_dict={},  # 传递轻量级信息
-                    conditioning_positive=positive,
-                    conditioning_negative=negative,
-                    latent_samples=latent_image["samples"],
-                    num_inference_steps=steps,
-                    guidance_scale=cfg,
-                    seed=seed,
-                    comfyui_vae=vae,  # 🎯 传递ComfyUI VAE
-                    comfyui_clip=clip  # 🎯 传递ComfyUI CLIP
-                )
-                
-                # 取消超时计时器
-                timeout_timer.cancel()
-                
-                if result_latents is not None:
-                    logger.info("✅ xDiT multi-GPU generation completed successfully")
-                    # 🔧 确保返回正确格式的latent数据
-                    return ({"samples": result_latents}, )
-                else:
-                    logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
-                    raise Exception("xDiT inference returned None")
-                    
-            except TimeoutError:
-                logger.error("⏰ XDiT multi-GPU inference timed out")
-                raise Exception("xDiT inference timed out")
-            finally:
-                # 确保取消超时计时器
-                timeout_timer.cancel()
+            result_latents = self._run_xdit_with_timeout(
+                xdit_dispatcher, model_info, positive, negative, 
+                latent_image["samples"], steps, cfg, seed, timeout_seconds
+            )
+            
+            if result_latents is not None:
+                logger.info("✅ xDiT multi-GPU generation completed!")
+                return ({"samples": result_latents},)
+            else:
+                logger.warning("⚠️ xDiT inference failed, falling back")
+                return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
                 
         except Exception as e:
-            logger.warning(f"xDiT multi-GPU acceleration failed: {e}")
-            logger.info("🔄 Falling back to standard ComfyUI sampling")
+            logger.error(f"❌ XDiT sampling failed: {e}")
+            logger.exception("Full traceback:")
+            return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
+
+    def _prepare_model_info(self, model, vae, clip):
+        """准备模型信息 - 关键修复"""
+        try:
+            # 尝试从model对象获取路径
+            model_path = None
             
-            # 🔧 再次检查模型是否有效
-            if model is None:
-                logger.error("❌ Model is None, cannot use fallback sampling")
-                logger.info("🔄 Returning original latent as final fallback")
-                return (latent_image, )
+            # 方法1: 检查model的model_path属性
+            if hasattr(model, 'model_path'):
+                model_path = model.model_path
+            # 方法2: 检查model.model的path属性
+            elif hasattr(model, 'model') and hasattr(model.model, 'model_path'):
+                model_path = model.model.model_path
+            # 方法3: 检查load_device信息
+            elif hasattr(model, 'load_device'):
+                # 可能需要从其他地方获取路径
+                pass
             
-            # 🔧 直接使用ComfyUI原生KSampler，避免架构不匹配问题
+            # 如果无法获取模型路径，尝试使用默认路径
+            if not model_path:
+                # 尝试从folder_paths获取最近的checkpoint
+                import folder_paths
+                checkpoints = folder_paths.get_filename_list("checkpoints")
+                if checkpoints:
+                    # 使用第一个找到的flux模型
+                    for ckpt in checkpoints:
+                        if 'flux' in ckpt.lower():
+                            model_path = folder_paths.get_full_path("checkpoints", ckpt)
+                            break
+                    if not model_path:
+                        model_path = folder_paths.get_full_path("checkpoints", checkpoints[0])
+            
+            if not model_path:
+                logger.error("无法确定模型路径")
+                return None
+            
+            logger.info(f"📁 Model path: {model_path}")
+            
+            # 构建完整的模型信息
+            model_info = {
+                'path': model_path,
+                'type': 'flux',  # 假设是FLUX模型
+                'vae': vae,
+                'clip': clip,
+                'model_object': model  # 添加原始model对象
+            }
+            
+            # 验证文件存在
+            if not os.path.exists(model_path):
+                logger.error(f"模型文件不存在: {model_path}")
+                return None
+            
+            logger.info("✅ Model info prepared successfully")
+            return model_info
+            
+        except Exception as e:
+            logger.error(f"准备模型信息失败: {e}")
+            return None
+    
+    def _run_xdit_with_timeout(self, dispatcher, model_info, positive, negative, latent_samples, steps, cfg, seed, timeout_seconds):
+        """运行xDiT推理，带超时控制"""
+        import threading
+        import queue
+        
+        # 使用线程和队列实现超时控制
+        result_queue = queue.Queue()
+        
+        def inference_worker():
             try:
-                logger.info("Using ComfyUI native KSampler for fallback")
-                
-                # 直接导入并使用ComfyUI的KSampler
-                from nodes import KSampler
-                
-                # 创建KSampler实例
-                native_sampler = KSampler()
-                
-                # 使用原生采样器
-                result = native_sampler.sample(
-                    model=model,
-                    seed=seed,
-                    steps=steps,
-                    cfg=cfg,
-                    sampler_name=sampler_name,
-                    scheduler=scheduler,
-                    positive=positive,
-                    negative=negative,
-                    latent_image=latent_image,
-                    denoise=denoise
+                result = dispatcher.run_inference(
+                    model_info=model_info,
+                    conditioning_positive=positive,
+                    conditioning_negative=negative,
+                    latent_samples=latent_samples,
+                    num_inference_steps=steps,
+                    guidance_scale=cfg,
+                    seed=seed
                 )
-                
-                logger.info("✅ Native ComfyUI KSampler completed successfully")
+                result_queue.put(('success', result))
+            except Exception as e:
+                result_queue.put(('error', str(e)))
+        
+        # 启动推理线程
+        thread = threading.Thread(target=inference_worker)
+        thread.daemon = True
+        thread.start()
+        
+        # 等待结果或超时
+        try:
+            status, result = result_queue.get(timeout=timeout_seconds)
+            if status == 'success':
                 return result
-                    
-            except Exception as fallback_error:
-                logger.error(f"❌ Native KSampler failed: {fallback_error}")
-                logger.exception("Fallback error traceback:")
-                logger.info("🔄 Returning original latent as final fallback")
-                # 最终fallback：返回原始latent
-                return (latent_image, )
+            else:
+                logger.error(f"推理线程错误: {result}")
+                return None
+        except queue.Empty:
+            logger.error(f"⏰ xDiT推理超时 ({timeout_seconds}s)")
+            return None
+    
+    def _fallback_sampling(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
+        """改进的fallback采样"""
+        try:
+            logger.info("🔄 Using ComfyUI native sampling as fallback")
+            
+            # 直接导入ComfyUI的KSampler
+            from nodes import KSampler
+            native_sampler = KSampler()
+            
+            # 使用原生采样器
+            result = native_sampler.sample(
+                model=model,
+                seed=seed,
+                steps=steps,
+                cfg=cfg,
+                sampler_name=sampler_name,
+                scheduler=scheduler,
+                positive=positive,
+                negative=negative,
+                latent_image=latent_image,
+                denoise=denoise
+            )
+            
+            logger.info("✅ Fallback sampling completed successfully")
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Fallback sampling also failed: {e}")
+            # 最终fallback：返回原始latent
+            return (latent_image,)    
 
     def _fallback_to_standard_sampling(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
         """Fallback to standard ComfyUI sampling"""
