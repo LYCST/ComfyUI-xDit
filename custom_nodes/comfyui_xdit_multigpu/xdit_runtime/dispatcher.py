@@ -22,7 +22,7 @@ except ImportError:
 
 from .worker import XDiTWorker, XDiTWorkerFallback, find_free_port
 from .ray_manager import initialize_ray, is_ray_available
-from comfyui_model_wrapper import ComfyUIModelWrapper
+from .comfyui_model_wrapper import ComfyUIModelWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -170,141 +170,31 @@ class XDiTDispatcher:
     #         logger.exception("Dispatcher initialization traceback:")
     #         return False
     
-    def initialize(self) -> bool:
-        """改进的初始化方法"""
+    def initialize(self):
+        """Initialize workers"""
         try:
-            logger.info("=" * 60)
-            logger.info("🚀 开始初始化XDiT Dispatcher")
-            logger.info(f"  • GPU设备: {self.gpu_devices}")
-            logger.info(f"  • 并行策略: {self.strategy}")
-            logger.info(f"  • 调度策略: {self.scheduling_strategy.value}")
-            logger.info(f"  • 模型路径: {self.model_path}")
-            logger.info(f"  • World size: {self.world_size}")
-            logger.info("=" * 60)
+            logger.info(f"🚀 Initializing {len(self.gpu_devices)} workers...")
             
-            # 检查GPU可用性
-            import torch
-            if not torch.cuda.is_available():
-                logger.error("❌ CUDA不可用")
-                return False
-            
-            available_gpus = torch.cuda.device_count()
-            logger.info(f"📊 检测到{available_gpus}个GPU")
-            
-            for gpu_id in self.gpu_devices:
-                if gpu_id >= available_gpus:
-                    logger.error(f"❌ GPU {gpu_id}不存在（只有{available_gpus}个GPU可用）")
-                    return False
-                
-                # 检查GPU内存
-                try:
-                    torch.cuda.set_device(gpu_id)
-                    memory_total = torch.cuda.get_device_properties(gpu_id).total_memory / 1024**3
-                    memory_free = (torch.cuda.get_device_properties(gpu_id).total_memory - torch.cuda.memory_allocated(gpu_id)) / 1024**3
-                    logger.info(f"  • GPU {gpu_id}: {memory_free:.1f}GB 可用 / {memory_total:.1f}GB 总计")
-                except Exception as e:
-                    logger.warning(f"  • GPU {gpu_id}: 无法获取内存信息 - {e}")
-            
-            # 检查模型文件
-            if not os.path.exists(self.model_path):
-                logger.error(f"❌ 模型文件不存在: {self.model_path}")
-                return False
-            
-            model_size = os.path.getsize(self.model_path) / 1024**3
-            logger.info(f"📁 模型文件: {model_size:.1f}GB")
-            if not RAY_AVAILABLE:
-                logger.warning("Ray不可用，使用fallback模式")
-                return self._initialize_fallback()
-            
-            # 1. 首先初始化Ray（如果需要）
-            if not is_ray_available():
-                logger.info("初始化Ray集群...")
-                # 为多GPU优化Ray配置
-                success = initialize_ray(
-                    num_gpus=len(self.gpu_devices),
-                    object_store_memory_gb=min(64, len(self.gpu_devices) * 8),  # 每GPU 8GB object store
-                    dashboard_port=None  # 禁用dashboard节省内存
-                )
-                if not success:
-                    logger.error("❌ Ray初始化失败")
-                    return False
-                logger.info("✅ Ray初始化成功")
+            if RAY_AVAILABLE:
+                # 使用Ray Actor
+                for gpu_id in self.gpu_devices:
+                    worker = XDiTWorker.remote(gpu_id, self.model_path, self.strategy)
+                    self.workers.append(worker)
+                    self.worker_loads[gpu_id] = 0
             else:
-                logger.info("✅ Ray已经运行")
-
-            # 显示Ray状态
-            ray_info = get_ray_info()
-            logger.info(f"📊 Ray状态: {ray_info}")
-
-            # 2. 分阶段创建workers
-            logger.info(f"创建{len(self.gpu_devices)}个GPU workers...")
-            
-            # 阶段1: 创建所有Ray actors
-            worker_actors = {}
-            for i, gpu_id in enumerate(self.gpu_devices):
-                try:
-                    # 使用动态端口避免冲突
-                    master_port = find_free_port() if i == 0 else self.master_port
-                    if i == 0:
-                        self.master_port = master_port
-                    
-                    worker = XDiTWorker.remote(
-                        gpu_id=gpu_id,
-                        model_path=self.model_path,
-                        strategy=self.strategy,
-                        master_addr=self.master_addr,
-                        master_port=self.master_port,
-                        world_size=self.world_size,
-                        rank=i
-                    )
-                    worker_actors[gpu_id] = worker
-                    logger.info(f"✅ Created worker actor for GPU {gpu_id}")
-                    
-                except Exception as e:
-                    logger.error(f"❌ Failed to create worker for GPU {gpu_id}: {e}")
-                    return False
-            
-            # 阶段2: 基础初始化
-            logger.info("执行workers基础初始化...")
-            init_futures = []
-            for gpu_id, worker in worker_actors.items():
-                future = worker.initialize.remote()
-                init_futures.append((gpu_id, future))
-            
-            # 等待基础初始化完成
-            for gpu_id, future in init_futures:
-                try:
-                    success = ray.get(future, timeout=60)
-                    if not success:
-                        logger.error(f"Worker {gpu_id} 基础初始化失败")
-                        return False
-                    logger.info(f"✅ Worker {gpu_id} 基础初始化完成")
-                except Exception as e:
-                    logger.error(f"Worker {gpu_id} 初始化异常: {e}")
-                    return False
-            
-            # 阶段3: 分布式环境初始化（仅多GPU）
-            if self.world_size > 1:
-                logger.info("初始化分布式环境...")
-                success = self._initialize_distributed(worker_actors)
-                if not success:
-                    logger.warning("分布式初始化失败，降级为单GPU模式")
-                    # 不返回False，而是继续使用单GPU模式
-                    self.world_size = 1
-            
-            # 保存workers
-            self.workers = worker_actors
-            for gpu_id in self.gpu_devices:
-                self.worker_loads[gpu_id] = 0
+                # 使用fallback worker
+                for gpu_id in self.gpu_devices:
+                    worker = XDiTWorkerFallback(gpu_id, self.model_path, self.strategy)
+                    self.workers.append(worker)
+                    self.worker_loads[gpu_id] = 0
             
             self.is_initialized = True
-            logger.info(f"✅ Dispatcher初始化完成，{len(self.workers)}个workers就绪")
-            return True   
+            logger.info(f"✅ Initialized {len(self.workers)} workers")
+            return True
             
         except Exception as e:
-            logger.error(f"Dispatcher初始化失败: {e}")
-            logger.exception("初始化错误:")
-            return self._initialize_fallback()
+            logger.error(f"Failed to initialize workers: {e}")
+            return False
     
     def _initialize_distributed(self, worker_actors) -> bool:
         """分布式环境初始化，带重试机制"""
@@ -467,14 +357,6 @@ class XDiTDispatcher:
             logger.exception("推理错误:")
             return None 
 
-    def initialize(self):
-        """Initialize workers"""
-        for gpu_id in self.gpu_devices:
-            # 初始化每个 worker，传入完整的 pipeline
-            worker = XDiTWorker(gpu_id, self.pipeline)
-            self.workers.append(worker)
-        logger.info(f"Initialized {len(self.workers)} workers")
-        
     def get_next_worker(self) -> Optional[Any]:
         """Get next worker based on scheduling strategy"""
         if not self.is_initialized or not self.workers:
@@ -495,35 +377,48 @@ class XDiTDispatcher:
     
     def _round_robin_schedule(self) -> Optional[Any]:
         """Round robin scheduling"""
-        worker_ids = list(self.workers.keys())
-        if not worker_ids:
+        if not self.workers:
             return None
         
-        worker_id = worker_ids[self.current_worker_index % len(worker_ids)]
+        worker = self.workers[self.current_worker_index % len(self.workers)]
         self.current_worker_index += 1
         
-        worker = self.workers[worker_id]
-        self.worker_loads[worker_id] += 1
+        # Update load for the worker's GPU
+        if hasattr(worker, 'gpu_id'):
+            gpu_id = worker.gpu_id
+        else:
+            # 对于Ray Actor，我们需要从索引推断GPU ID
+            gpu_id = self.gpu_devices[self.current_worker_index - 1]
         
-        logger.debug(f"Round robin: assigned to GPU {worker_id}")
+        self.worker_loads[gpu_id] = self.worker_loads.get(gpu_id, 0) + 1
+        
+        logger.debug(f"Round robin: assigned to GPU {gpu_id}")
         return worker
     
     def _least_loaded_schedule(self) -> Optional[Any]:
         """Least loaded scheduling"""
-        if not self.worker_loads:
+        if not self.workers:
             return None
         
         # Find worker with minimum load
-        min_load = min(self.worker_loads.values())
-        candidates = [gpu_id for gpu_id, load in self.worker_loads.items() if load == min_load]
+        min_load = min(self.worker_loads.values()) if self.worker_loads else 0
+        candidates = []
+        
+        for i, worker in enumerate(self.workers):
+            gpu_id = self.gpu_devices[i] if i < len(self.gpu_devices) else 0
+            load = self.worker_loads.get(gpu_id, 0)
+            if load == min_load:
+                candidates.append((worker, gpu_id))
         
         # If multiple candidates, choose the first one
-        worker_id = candidates[0]
-        worker = self.workers[worker_id]
-        self.worker_loads[worker_id] += 1
+        if candidates:
+            worker, gpu_id = candidates[0]
+            self.worker_loads[gpu_id] = self.worker_loads.get(gpu_id, 0) + 1
+            
+            logger.debug(f"Least loaded: assigned to GPU {gpu_id} (load: {min_load})")
+            return worker
         
-        logger.debug(f"Least loaded: assigned to GPU {worker_id} (load: {min_load})")
-        return worker
+        return None
     
     def _weighted_round_robin_schedule(self) -> Optional[Any]:
         """Weighted round robin scheduling based on GPU memory"""
@@ -672,181 +567,6 @@ class XDiTDispatcher:
             logger.exception("Full traceback:")
             return "failed"
 
-    # def run_inference(self, 
-    #                 model_state_dict: Dict,
-    #                 conditioning_positive: Any,
-    #                 conditioning_negative: Any,
-    #                 latent_samples: torch.Tensor,
-    #                 num_inference_steps: int = 20,
-    #                 guidance_scale: float = 8.0,
-    #                 seed: int = 42,
-    #                 comfyui_vae: Any = None,
-    #                 comfyui_clip: Any = None) -> Optional[torch.Tensor]:
-    #     """Run inference using the dispatcher with ComfyUI model integration"""
-    #     try:
-    #         if not self.is_initialized:
-    #             logger.error("Dispatcher not initialized")
-    #             return None
-            
-    #         # 🔧 关键修复：首先尝试分布式加载模型
-    #         if not hasattr(self, 'model_loaded') or not self.model_loaded:
-    #             logger.info("🔄 Loading model distributed...")
-    #             load_result = self.load_model_distributed(self.model_path)
-    #             if load_result == "failed":
-    #                 logger.error("❌ Model loading failed completely")
-    #                 return None
-    #             elif load_result == "fallback_to_comfyui":
-    #                 logger.info("🎯 Workers ready for ComfyUI component integration - proceeding with multi-GPU inference")
-            
-    #         # Get next available worker
-    #         worker = self.get_next_worker()
-    #         if worker is None:
-    #             logger.error("No available workers")
-    #             return None
-                
-    #         # 🔧 修复模型路径处理：直接使用safetensors文件进行xDiT推理
-    #         effective_model_path = self.model_path
-            
-    #         # 🎯 构建包含ComfyUI组件的model_info
-    #         model_info = {
-    #             'path': effective_model_path,
-    #             'type': 'flux',  # 假设是FLUX模型
-    #             'vae': comfyui_vae,
-    #             'clip': comfyui_clip
-    #         }
-            
-    #         logger.info(f"🎯 Passing ComfyUI components to worker:")
-    #         logger.info(f"  • VAE: {'✅ Available' if comfyui_vae is not None else '❌ Missing'}")
-    #         logger.info(f"  • CLIP: {'✅ Available' if comfyui_clip is not None else '❌ Missing'}")
-            
-    #         # 验证模型路径
-    #         if not os.path.exists(effective_model_path):
-    #             logger.error(f"Model file not found: {effective_model_path}")
-    #             return None
-            
-    #         logger.info(f"Running xDiT inference with {len(self.workers)} workers")
-    #         logger.info(f"Model: {model_info['path']}")
-    #         logger.info(f"Steps: {num_inference_steps}, CFG: {guidance_scale}")
-            
-    #         # 🔧 增加超时时间和添加进度监控
-    #         max_retries = 3
-    #         timeout_seconds = 300  # 5分钟超时
-            
-    #         for attempt in range(max_retries):
-    #             try:
-    #                 logger.info(f"🔄 Attempt {attempt + 1}/{max_retries} - Running xDiT inference...")
-                    
-    #                 # 🔧 Run inference with model_info instead of model_state_dict
-    #                 if RAY_AVAILABLE:
-    #                     # 创建推理任务
-    #                     future = worker.run_inference.remote(
-    #                         model_info=model_info,  # 传递包含ComfyUI组件的model_info
-    #                         conditioning_positive=conditioning_positive,
-    #                         conditioning_negative=conditioning_negative,
-    #                         latent_samples=latent_samples,
-    #                         num_inference_steps=num_inference_steps,
-    #                         guidance_scale=guidance_scale,
-    #                         seed=seed
-    #                     )
-                        
-    #                     # 使用更智能的等待策略
-    #                     logger.info(f"⏳ Waiting for worker response (timeout: {timeout_seconds}s)...")
-    #                     start_time = time.time()
-    #                     check_interval = 10  # 每10秒检查一次
-                        
-    #                     while True:
-    #                         try:
-    #                             # 尝试获取结果（非阻塞）
-    #                             result = ray.get(future, timeout=check_interval)
-    #                             break  # 成功获取结果
-    #                         except ray.exceptions.GetTimeoutError:
-    #                             elapsed = time.time() - start_time
-    #                             if elapsed > timeout_seconds:
-    #                                 logger.error(f"⏰ Timeout after {elapsed:.1f}s")
-    #                                 raise TimeoutError(f"Inference timeout after {elapsed:.1f}s")
-    #                             else:
-    #                                 logger.info(f"⏳ Still processing... ({elapsed:.1f}s elapsed)")
-    #                                 # 检查worker状态
-    #                                 try:
-    #                                     gpu_info = ray.get(worker.get_gpu_info.remote(), timeout=1)
-    #                                     logger.info(f"Worker GPU memory: {gpu_info.get('memory_allocated_gb', 0):.1f}GB allocated")
-    #                                 except:
-    #                                     pass
-    #                 else:
-    #                     result = worker.run_inference(
-    #                         model_info=model_info,  # 传递包含ComfyUI组件的model_info
-    #                         conditioning_positive=conditioning_positive,
-    #                         conditioning_negative=conditioning_negative,
-    #                         latent_samples=latent_samples,
-    #                         num_inference_steps=num_inference_steps,
-    #                         guidance_scale=guidance_scale,
-    #                         seed=seed
-    #                     )
-                    
-    #                 # 检查结果
-    #                 if result is not None:
-    #                     logger.info(f"✅ xDiT inference completed successfully on attempt {attempt + 1}")
-                        
-    #                     # Update worker load
-    #                     worker_id = None
-    #                     for gpu_id, w in self.workers.items():
-    #                         if w == worker:
-    #                             worker_id = gpu_id
-    #                             break
-                        
-    #                     if worker_id is not None:
-    #                         self.worker_loads[worker_id] = max(0, self.worker_loads[worker_id] - 1)
-                        
-    #                     return result
-    #                 else:
-    #                     logger.warning(f"⚠️ xDiT inference returned None on attempt {attempt + 1}")
-    #                     if attempt < max_retries - 1:
-    #                         logger.info(f"🔄 Retrying with different worker...")
-    #                         # 尝试下一个worker
-    #                         worker = self.get_next_worker()
-    #                         if worker is None:
-    #                             logger.error("No more available workers")
-    #                             break
-    #                     else:
-    #                         logger.error("❌ All attempts failed - xDiT inference returned None")
-    #                         break
-                            
-    #             except (ray.exceptions.GetTimeoutError, TimeoutError):
-    #                 logger.error(f"⏰ Timeout on attempt {attempt + 1}")
-    #                 if attempt < max_retries - 1:
-    #                     logger.info(f"🔄 Retrying with different worker...")
-    #                     # 尝试下一个worker
-    #                     worker = self.get_next_worker()
-    #                     if worker is None:
-    #                         logger.error("No more available workers")
-    #                         break
-    #                 else:
-    #                     logger.error("❌ All attempts timed out")
-    #                     break
-                        
-    #             except Exception as e:
-    #                 logger.error(f"❌ Error on attempt {attempt + 1}: {e}")
-    #                 logger.exception("Inference error traceback:")
-    #                 if attempt < max_retries - 1:
-    #                     logger.info(f"🔄 Retrying with different worker...")
-    #                     # 尝试下一个worker
-    #                     worker = self.get_next_worker()
-    #                     if worker is None:
-    #                         logger.error("No more available workers")
-    #                         break
-    #                 else:
-    #                     logger.error("❌ All attempts failed")
-    #                     break
-            
-    #         # 如果所有尝试都失败了，触发fallback
-    #         logger.warning("⚠️ xDiT multi-GPU failed, falling back to single-GPU")
-    #         return None
-            
-    #     except Exception as e:
-    #         logger.error(f"Error during inference: {e}")
-    #         logger.exception("Full traceback:")
-    #         return None
-
     def get_status(self) -> Dict[str, Any]:
         """Get dispatcher status"""
         status = {
@@ -859,11 +579,14 @@ class XDiTDispatcher:
         
         # Get detailed GPU info
         gpu_infos = {}
-        for gpu_id, worker in self.workers.items():
+        for i, worker in enumerate(self.workers):
+            gpu_id = self.gpu_devices[i] if i < len(self.gpu_devices) else 0
             try:
-                if RAY_AVAILABLE:
+                if RAY_AVAILABLE and hasattr(worker, 'get_gpu_info'):
+                    # Ray Actor
                     gpu_info = ray.get(worker.get_gpu_info.remote())
                 else:
+                    # Fallback worker
                     gpu_info = worker.get_gpu_info()
                 gpu_infos[gpu_id] = gpu_info
             except Exception as e:
@@ -877,12 +600,17 @@ class XDiTDispatcher:
         try:
             logger.info("Cleaning up XDiT Dispatcher")
             
-            for gpu_id, worker in self.workers.items():
+            for i, worker in enumerate(self.workers):
                 try:
-                    if RAY_AVAILABLE:
+                    gpu_id = self.gpu_devices[i] if i < len(self.gpu_devices) else 0
+                    
+                    if RAY_AVAILABLE and hasattr(worker, 'cleanup'):
+                        # Ray Actor
                         ray.get(worker.cleanup.remote())
                     else:
+                        # Fallback worker
                         worker.cleanup()
+                        
                     logger.info(f"✅ Worker on GPU {gpu_id} cleaned up")
                 except Exception as e:
                     logger.error(f"Error cleaning up worker on GPU {gpu_id}: {e}")
@@ -890,11 +618,6 @@ class XDiTDispatcher:
             self.workers.clear()
             self.worker_loads.clear()
             self.is_initialized = False
-            
-            # Shutdown Ray if we initialized it
-            if RAY_AVAILABLE and ray.is_initialized():
-                ray.shutdown()
-                logger.info("Ray shutdown")
             
             logger.info("✅ XDiT Dispatcher cleaned up")
             

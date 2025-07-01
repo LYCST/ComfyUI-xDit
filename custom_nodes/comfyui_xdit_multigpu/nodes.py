@@ -13,6 +13,7 @@ import logging
 import numpy as np
 from typing import Dict, Any, Optional, List, Tuple
 import time
+from enum import Enum
 
 # ComfyUI imports
 import folder_paths
@@ -41,6 +42,35 @@ except ImportError:
         class SchedulingStrategy:
             ROUND_ROBIN = "round_robin"
 
+logger = logging.getLogger(__name__)
+
+def parse_scheduling_strategy(scheduling_strategy_str: str) -> SchedulingStrategy:
+    """解析调度策略字符串为枚举值"""
+    try:
+        # 尝试直接匹配枚举值
+        for strategy in SchedulingStrategy:
+            if strategy.value == scheduling_strategy_str:
+                return strategy
+        
+        # 如果直接匹配失败，尝试其他方式
+        strategy_map = {
+            "round_robin": SchedulingStrategy.ROUND_ROBIN,
+            "least_loaded": SchedulingStrategy.LEAST_LOADED,
+            "weighted_round_robin": SchedulingStrategy.WEIGHTED_ROUND_ROBIN,
+            "adaptive": SchedulingStrategy.ADAPTIVE,
+        }
+        
+        if scheduling_strategy_str in strategy_map:
+            return strategy_map[scheduling_strategy_str]
+        
+        # 默认返回轮询策略
+        logger.warning(f"Unknown scheduling strategy '{scheduling_strategy_str}', using round_robin")
+        return SchedulingStrategy.ROUND_ROBIN
+        
+    except Exception as e:
+        logger.error(f"Error parsing scheduling strategy: {e}")
+        return SchedulingStrategy.ROUND_ROBIN
+
 # Try to import xDiT
 try:
     import xfuser
@@ -48,8 +78,6 @@ try:
     XDIT_AVAILABLE = True
 except ImportError:
     XDIT_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
 
 class XDiTCheckpointLoader:
     """
@@ -96,25 +124,14 @@ class XDiTCheckpointLoader:
                     gpu_list = [int(x.strip()) for x in gpu_devices.split(",")]
                     logger.info(f"Initializing xDiT multi-GPU acceleration for {ckpt_name} on GPUs: {gpu_list}")
                     
-                    # Parse scheduling strategy
-                    try:
-                        scheduling_enum = None
-                        for strategy in SchedulingStrategy:
-                            if strategy.value == scheduling_strategy:
-                                scheduling_enum = strategy
-                                break
-
-                        if scheduling_enum is None:
-                            logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
-                            scheduling_enum = SchedulingStrategy.ROUND_ROBIN
-                    except ValueError:
-                        logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
-                        scheduling = SchedulingStrategy.ROUND_ROBIN
+                    # 使用修复的解析函数
+                    scheduling_enum = parse_scheduling_strategy(scheduling_strategy)
+                    logger.info(f"Using scheduling strategy: {scheduling_enum.value}")
                     
                     # Create dispatcher
                     dispatcher = XDiTDispatcher(
                         gpu_devices=gpu_list,
-                        model_path=unet_path,
+                        model_path=ckpt_path,
                         strategy=parallel_strategy,
                         scheduling_strategy=scheduling_enum
                     )
@@ -189,20 +206,9 @@ class XDiTUNetLoader:
                     gpu_list = [int(x.strip()) for x in gpu_devices.split(",")]
                     logger.info(f"Initializing xDiT multi-GPU acceleration for UNet {unet_name} on GPUs: {gpu_list}")
                     
-                    # Parse scheduling strategy
-                    try:
-                        scheduling_enum = None
-                        for strategy in SchedulingStrategy:
-                            if strategy.value == scheduling_strategy:
-                                scheduling_enum = strategy
-                                break
-
-                        if scheduling_enum is None:
-                            logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
-                            scheduling_enum = SchedulingStrategy.ROUND_ROBIN
-                    except ValueError:
-                        logger.warning(f"Invalid scheduling strategy {scheduling_strategy}, using round_robin")
-                        scheduling = SchedulingStrategy.ROUND_ROBIN
+                    # 使用修复的解析函数
+                    scheduling_enum = parse_scheduling_strategy(scheduling_strategy)
+                    logger.info(f"Using scheduling strategy: {scheduling_enum.value}")
                     
                     # Create dispatcher
                     dispatcher = XDiTDispatcher(
