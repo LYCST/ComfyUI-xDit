@@ -51,7 +51,9 @@ class XDiTDispatcher:
         self.worker_loads = {}
         self.lock = threading.Lock()
         self.is_initialized = False
-        self.model_wrapper = ComfyUIModelWrapper(model_path)  # 使用自定义模型加载器
+        
+        # 创建模型包装器
+        self.model_wrapper = ComfyUIModelWrapper(model_path)
         self.pipeline = None
         
         # 分布式配置
@@ -63,113 +65,13 @@ class XDiTDispatcher:
         logger.info(f"Scheduling strategy: {scheduling_strategy.value}")
         logger.info(f"Distributed config: {self.master_addr}:{self.master_port}, world_size={self.world_size}")
 
-        # 初始化 ComfyUI 模型包装器
+        # 初始化模型包装器
         if not self.model_wrapper.load_components():
             logger.error(f"Failed to initialize model wrapper for {model_path}")
             return
 
-        self.pipeline = self.model_wrapper.get_pipeline()  # 获取组合后的 pipeline
-
+        self.pipeline = self.model_wrapper.get_pipeline()
         logger.info(f"Pipeline ready: {self.pipeline}")
-    
-    # def initialize(self) -> bool:
-    #     """Initialize all workers with coordinated distributed setup"""
-    #     try:
-    #         if RAY_AVAILABLE:
-    #             # Initialize Ray if not already done
-    #             if not is_ray_available():
-    #                 success = initialize_ray()
-    #                 if not success:
-    #                     logger.error("Failed to initialize Ray")
-    #                     return False
-    #                 logger.info("Ray initialized successfully")
-                
-    #             # Create Ray workers with proper distributed parameters
-    #             worker_init_futures = []
-                
-    #             for i, gpu_id in enumerate(self.gpu_devices):
-    #                 worker = XDiTWorker.remote(
-    #                     gpu_id=gpu_id, 
-    #                     model_path=self.model_path, 
-    #                     strategy=self.strategy,
-    #                     master_addr=self.master_addr,
-    #                     master_port=self.master_port,
-    #                     world_size=self.world_size,
-    #                     rank=i  # 使用索引作为rank
-    #                 )
-    #                 self.workers[gpu_id] = worker
-    #                 self.worker_loads[gpu_id] = 0
-                    
-    #                 # Initialize worker (basic setup)
-    #                 future = worker.initialize.remote()
-    #                 worker_init_futures.append((gpu_id, future))
-                
-    #             # Wait for all workers to complete basic initialization
-    #             logger.info("Waiting for all workers to complete basic initialization...")
-    #             for gpu_id, future in worker_init_futures:
-    #                 try:
-    #                     success = ray.get(future, timeout=60)
-    #                     if not success:
-    #                         logger.error(f"Failed to initialize Ray worker on GPU {gpu_id}")
-    #                         return False
-    #                     logger.info(f"✅ Ray worker initialized on GPU {gpu_id}")
-    #                 except Exception as e:
-    #                     logger.error(f"Worker initialization failed on GPU {gpu_id}: {e}")
-    #                     return False
-                
-    #             # Now initialize distributed environment for multi-GPU
-    #             if self.world_size > 1:
-    #                 logger.info("Initializing distributed environment for multi-GPU...")
-    #                 distributed_futures = []
-                    
-    #                 for gpu_id, worker in self.workers.items():
-    #                     future = worker.initialize_distributed.remote()
-    #                     distributed_futures.append((gpu_id, future))
-                    
-    #                 # Wait for distributed initialization
-    #                 distributed_success = True
-    #                 for gpu_id, future in distributed_futures:
-    #                     try:
-    #                         success = ray.get(future, timeout=300)  # 5分钟超时
-    #                         if not success:
-    #                             logger.error(f"Failed to initialize distributed on GPU {gpu_id}")
-    #                             distributed_success = False
-    #                         else:
-    #                             logger.info(f"✅ Distributed initialized on GPU {gpu_id}")
-    #                     except Exception as e:
-    #                         logger.error(f"Distributed initialization failed on GPU {gpu_id}: {e}")
-    #                         distributed_success = False
-                    
-    #                 if not distributed_success:
-    #                     logger.warning("Some workers failed distributed initialization, falling back to single-GPU mode")
-    #                     # 不返回False，而是继续，让系统回退到单GPU
-    #             else:
-    #                 logger.info("Single GPU mode, skipping distributed initialization")
-                    
-    #         else:
-    #             # Use fallback workers
-    #             logger.warning("Ray not available, using fallback workers")
-    #             for gpu_id in self.gpu_devices:
-    #                 worker = XDiTWorkerFallback(gpu_id, self.model_path, self.strategy)
-    #                 self.workers[gpu_id] = worker
-    #                 self.worker_loads[gpu_id] = 0
-                    
-    #                 # Initialize worker
-    #                 success = worker.initialize()
-    #                 if not success:
-    #                     logger.error(f"Failed to initialize fallback worker on GPU {gpu_id}")
-    #                     return False
-                    
-    #                 logger.info(f"✅ Fallback worker initialized on GPU {gpu_id}")
-            
-    #         self.is_initialized = True
-    #         logger.info(f"✅ XDiT Dispatcher initialized with {len(self.workers)} workers")
-    #         return True
-            
-    #     except Exception as e:
-    #         logger.error(f"Failed to initialize XDiT Dispatcher: {e}")
-    #         logger.exception("Dispatcher initialization traceback:")
-    #         return False
     
     def initialize(self):
         """Initialize workers"""

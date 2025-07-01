@@ -402,6 +402,10 @@ class XDiTKSampler:
         logger.info(f"  • xdit_dispatcher: {type(xdit_dispatcher) if xdit_dispatcher else 'None'}")
         
         try:
+            # 🔧 关键修复：如果dispatcher存在且有VAE/CLIP，立即更新模型包装器
+            if xdit_dispatcher and (vae or clip):
+                self._update_dispatcher_with_components(xdit_dispatcher, vae, clip)
+            
             # 1. 首先验证基本组件
             if model is None:
                 logger.error("❌ Model is None, cannot proceed")
@@ -454,6 +458,47 @@ class XDiTKSampler:
             logger.error(f"❌ XDiT sampling failed: {e}")
             logger.exception("Full traceback:")
             return self._fallback_sampling(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise)
+
+    def _update_dispatcher_with_components(self, dispatcher, vae, clip):
+        """更新dispatcher的VAE和CLIP组件信息"""
+        try:
+            # 🔧 关键修复：从ComfyUI组件中提取路径信息
+            vae_path = None
+            clip_paths = []
+            
+            # 尝试从VAE对象获取路径信息
+            if vae is not None:
+                # 检查VAE对象是否有路径信息
+                if hasattr(vae, 'first_stage_model') and hasattr(vae.first_stage_model, 'config'):
+                    # 这是一个ComfyUI VAE对象
+                    logger.info("🔧 Found ComfyUI VAE object, will use it directly")
+                elif hasattr(vae, 'sd') and hasattr(vae, 'config'):
+                    # 另一种VAE格式
+                    logger.info("🔧 Found VAE with state dict, will use it directly")
+                else:
+                    logger.info("🔧 VAE object available for direct use")
+            
+            # 尝试从CLIP对象获取路径信息
+            if clip is not None:
+                if hasattr(clip, 'cond_stage_model'):
+                    logger.info("🔧 Found ComfyUI CLIP object, will use it directly")
+                else:
+                    logger.info("🔧 CLIP object available for direct use")
+            
+            # 🔧 关键：更新dispatcher的模型包装器，使其知道现在有VAE和CLIP可用
+            if hasattr(dispatcher, 'model_wrapper') and dispatcher.model_wrapper:
+                # 直接设置VAE和CLIP对象到模型包装器
+                if hasattr(dispatcher.model_wrapper, 'set_runtime_components'):
+                    dispatcher.model_wrapper.set_runtime_components(vae, clip)
+                else:
+                    # 如果没有专门的设置方法，直接赋值
+                    dispatcher.model_wrapper.runtime_vae = vae
+                    dispatcher.model_wrapper.runtime_clip = clip
+                    
+            logger.info("✅ Updated dispatcher with VAE/CLIP components")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Could not update dispatcher components: {e}")
 
     def _debug_model_objects(self, model, vae, clip, xdit_dispatcher):
         """调试模型对象，查看它们包含的信息"""

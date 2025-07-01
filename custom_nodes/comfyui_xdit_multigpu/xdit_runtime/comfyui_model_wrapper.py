@@ -20,10 +20,8 @@ class ComfyUIModelWrapper:
     包装ComfyUI的模型组件，使其可以被xDiT使用
     """
     
-    def __init__(self, model_path: str, vae_path: str = None, clip_paths: list = None):
+    def __init__(self, model_path: str):
         self.model_path = model_path
-        self.vae_path = vae_path
-        self.clip_paths = clip_paths or []
         
         # 模型组件
         self.unet = None
@@ -32,86 +30,61 @@ class ComfyUIModelWrapper:
         self.model_config = None
         self.pipeline = None  # 添加pipeline属性
         
+        # 🔧 新增：运行时组件（从工作流传递）
+        self.runtime_vae = None
+        self.runtime_clip = None
+        
         logger.info(f"Initializing ComfyUI model wrapper")
         logger.info(f"  UNet: {model_path}")
-        logger.info(f"  VAE: {vae_path}")
-        logger.info(f"  CLIP: {clip_paths}")
+        logger.info(f"  VAE: Will be provided by workflow")
+        logger.info(f"  CLIP: Will be provided by workflow")
+    
+    def set_runtime_components(self, vae=None, clip=None):
+        """设置运行时VAE和CLIP组件"""
+        try:
+            if vae is not None:
+                self.runtime_vae = vae
+                logger.info("✅ Set runtime VAE component")
+            
+            if clip is not None:
+                self.runtime_clip = clip 
+                logger.info("✅ Set runtime CLIP component")
+                
+        except Exception as e:
+            logger.error(f"Error setting runtime components: {e}")
     
     def load_components(self):
-        """加载ComfyUI模型组件"""
+        """加载ComfyUI模型组件 - 修改为优先使用运行时组件"""
         try:
             # 1. 加载UNet/Transformer
             logger.info(f"Loading UNet from: {self.model_path}")
             if self.model_path.endswith('.safetensors'):
-                # 使用ComfyUI的加载方法
                 import safetensors.torch
                 sd = safetensors.torch.load_file(self.model_path)
                 
-                # 调试：打印前几个键名
                 keys = list(sd.keys())
                 logger.info(f"Model keys (first 10): {keys[:10]}")
                 logger.info(f"Total keys: {len(keys)}")
                 
-                # 检测模型类型 - 支持多种FLUX键名模式
+                # 检测模型类型
                 flux_indicators = [
-                    'transformer_blocks',
-                    'transformer',
-                    'model.diffusion_model',
-                    'diffusion_model',
-                    'time_embed',
-                    'input_blocks',
-                    'middle_block',
-                    'output_blocks',
-                    'double_blocks',  # FLUX模型的实际键名
-                    'img_attn',
-                    'img_mlp'
+                    'transformer_blocks', 'transformer', 'model.diffusion_model',
+                    'diffusion_model', 'time_embed', 'input_blocks', 'middle_block',
+                    'output_blocks', 'double_blocks', 'img_attn', 'img_mlp'
                 ]
                 
                 is_flux_model = any(key.startswith(indicator) for key in keys for indicator in flux_indicators)
                 
                 if is_flux_model:
                     logger.info("✅ Detected FLUX/UNet model format")
-                    
-                    # 对于FLUX模型，我们不需要在这里创建完整的transformer
-                    # 只需要标记为已加载，让ComfyUI处理实际的模型加载
                     self.unet = "flux_model_loaded"
                     logger.info("✅ FLUX model marked as loaded (will use ComfyUI components)")
                 else:
                     logger.warning(f"Unknown model format - no FLUX indicators found")
-                    logger.warning(f"Available key patterns: {[k.split('.')[0] for k in keys[:20]]}")
                     return False
             
-            # 2. 加载VAE（如果提供且存在）
-            if self.vae_path and os.path.exists(self.vae_path):
-                try:
-                    logger.info(f"Loading VAE from: {self.vae_path}")
-                    vae_sd = comfy.utils.load_torch_file(self.vae_path)
-                    self.vae = comfy.sd.VAE(sd=vae_sd)
-                    logger.info("✅ Loaded VAE")
-                except Exception as e:
-                    logger.warning(f"Failed to load VAE: {e}")
-            else:
-                logger.info("VAE not provided or not found - will use ComfyUI VAE")
-            
-            # 3. 加载CLIP（如果提供且存在）
-            if self.clip_paths:
-                existing_clip_paths = [p for p in self.clip_paths if os.path.exists(p)]
-                if existing_clip_paths:
-                    try:
-                        logger.info(f"Loading CLIP from: {existing_clip_paths}")
-                        # 使用ComfyUI的CLIP加载方法
-                        self.clip = comfy.sd.load_clip(
-                            ckpt_paths=existing_clip_paths,
-                            embedding_directory=folder_paths.get_folder_paths("embeddings"),
-                            clip_type=comfy.sd.CLIPType.FLUX
-                        )
-                        logger.info("✅ Loaded CLIP")
-                    except Exception as e:
-                        logger.warning(f"Failed to load CLIP: {e}")
-                else:
-                    logger.info("CLIP files not found - will use ComfyUI CLIP")
-            else:
-                logger.info("CLIP not provided - will use ComfyUI CLIP")
+            # 2. VAE和CLIP将在运行时从工作流获取
+            logger.info("VAE and CLIP will be provided by workflow at runtime")
             
             # 只要UNet加载成功就返回True
             if self.unet is not None:
@@ -125,6 +98,33 @@ class ComfyUIModelWrapper:
             logger.error(f"Failed to load components: {e}")
             logger.exception("Load error:")
             return False
+    
+    def get_vae(self):
+        """获取VAE组件 - 优先使用运行时组件"""
+        if hasattr(self, 'runtime_vae') and self.runtime_vae is not None:
+            logger.info("✅ Using runtime VAE component from workflow")
+            return self.runtime_vae
+        else:
+            logger.info("VAE not available yet - will be provided by workflow")
+            return None
+    
+    def get_clip(self):
+        """获取CLIP组件 - 优先使用运行时组件"""
+        if hasattr(self, 'runtime_clip') and self.runtime_clip is not None:
+            logger.info("✅ Using runtime CLIP component from workflow")
+            return self.runtime_clip
+        else:
+            logger.info("CLIP not available yet - will be provided by workflow")
+            return None
+    
+    def has_components(self):
+        """检查是否有必要的组件"""
+        has_unet = self.unet is not None
+        has_vae = self.get_vae() is not None
+        has_clip = self.get_clip() is not None
+        
+        logger.info(f"Component status: UNet={has_unet}, VAE={has_vae}, CLIP={has_clip}")
+        return has_unet and has_vae and has_clip
     
     def get_pipeline(self):
         """
