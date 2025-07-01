@@ -74,9 +74,14 @@ class XDiTDispatcher:
         logger.info(f"Pipeline ready: {self.pipeline}")
     
     def initialize(self):
-        """Initialize workers"""
+        """Initialize workers with improved distributed coordination"""
         try:
             logger.info(f"🚀 Initializing {len(self.gpu_devices)} workers...")
+            
+            # 🔧 如果只有一个GPU，跳过复杂的分布式设置
+            if len(self.gpu_devices) <= 1:
+                logger.info("Single GPU detected, using simplified initialization")
+                return self._initialize_single_gpu()
             
             if RAY_AVAILABLE:
                 # 使用Ray Actor
@@ -97,7 +102,7 @@ class XDiTDispatcher:
                         self.workers.append(worker)
                         self.worker_loads[gpu_id] = 0
                         
-                        # 🔧 关键修复：调用worker的initialize方法
+                        # 🔧 先进行基础初始化
                         future = worker.initialize.remote()
                         worker_futures.append((gpu_id, worker, future))
                         
@@ -106,20 +111,50 @@ class XDiTDispatcher:
                         logger.error(f"❌ Failed to create worker for GPU {gpu_id}: {e}")
                         return False
 
-                # 等待所有worker初始化完成
-                logger.info("⏳ Waiting for all workers to initialize...")
+                # 等待所有worker基础初始化完成
+                logger.info("⏳ Waiting for basic worker initialization...")
                 
                 for gpu_id, worker, future in worker_futures:
                     try:
                         success = ray.get(future, timeout=60)
                         if success:
-                            logger.info(f"✅ Worker {gpu_id} initialized successfully")
+                            logger.info(f"✅ Worker {gpu_id} basic initialization completed")
                         else:
-                            logger.error(f"❌ Worker {gpu_id} initialization failed")
+                            logger.error(f"❌ Worker {gpu_id} basic initialization failed")
                             return False
                     except Exception as e:
                         logger.error(f"❌ Worker {gpu_id} initialization error: {e}")
                         return False
+                
+                # 🔧 现在尝试分布式初始化（如果需要的话）
+                if len(self.workers) > 1:
+                    logger.info("⏳ Attempting distributed initialization...")
+                    distributed_futures = []
+                    
+                    for gpu_id, worker in zip(self.gpu_devices, self.workers):
+                        future = worker.initialize_distributed.remote()
+                        distributed_futures.append((gpu_id, future))
+                    
+                    # 🔧 等待分布式初始化，但允许部分失败
+                    success_count = 0
+                    for gpu_id, future in distributed_futures:
+                        try:
+                            success = ray.get(future, timeout=120)  # 2分钟超时
+                            if success:
+                                success_count += 1
+                                logger.info(f"✅ Worker {gpu_id} distributed initialization completed")
+                            else:
+                                logger.warning(f"⚠️ Worker {gpu_id} distributed initialization failed")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Worker {gpu_id} distributed initialization error: {e}")
+                    
+                    # 🔧 如果大部分worker的分布式初始化失败，改为单GPU模式
+                    if success_count < len(self.workers) // 2:
+                        logger.warning(f"⚠️ Only {success_count}/{len(self.workers)} workers completed distributed init")
+                        logger.warning("⚠️ Falling back to single-GPU mode")
+                        return self._fallback_to_single_gpu()
+                    else:
+                        logger.info(f"✅ {success_count}/{len(self.workers)} workers ready for distributed inference")
                 
                 logger.info(f"✅ All {len(self.workers)} Ray workers initialized")
             else:
@@ -147,6 +182,7 @@ class XDiTDispatcher:
             
         except Exception as e:
             logger.error(f"Failed to initialize workers: {e}")
+            logger.exception("Initialization error:")
             return False
     
     def _initialize_distributed(self, worker_actors) -> bool:
@@ -235,75 +271,35 @@ class XDiTDispatcher:
     def run_inference(self, model_info, conditioning_positive, conditioning_negative, 
                      latent_samples, num_inference_steps=20, guidance_scale=8.0, seed=42, 
                      comfyui_vae=None, comfyui_clip=None) -> Optional[torch.Tensor]:
-        """改进的推理方法"""
+        """改进的推理方法 - 带分布式状态检查"""
         try:
             if not self.is_initialized or not self.workers:
                 logger.error("Dispatcher未初始化")
                 return None
 
+            # 🔧 检查分布式状态
+            effective_workers = len(self.workers)
+            if effective_workers == 1:
+                logger.info(f"🔧 Running in single-GPU mode")
+            else:
+                logger.info(f"🚀 Running in multi-GPU mode with {effective_workers} workers")
+
             # 更新model_info以包含ComfyUI组件
             enhanced_model_info = model_info.copy()
-
-            # 从方法参数获取VAE和CLIP
-            actual_vae = comfyui_vae
-            actual_clip = comfyui_clip
-            
-            # 如果参数中没有，尝试从model_info中获取
-            if actual_vae is None:
-                actual_vae = model_info.get('vae')
-            if actual_clip is None:
-                actual_clip = model_info.get('clip')
-
-
             enhanced_model_info.update({
-                'vae': actual_vae,
-                'clip': actual_clip,
+                'vae': comfyui_vae,
+                'clip': comfyui_clip,
                 'comfyui_mode': True,
-                'vae_available': actual_vae is not None,
-                'clip_available': actual_clip is not None
+                'vae_available': comfyui_vae is not None,
+                'clip_available': comfyui_clip is not None,
+                'effective_workers': effective_workers
             })
 
-            
-            # 🔧 处理从KSampler传来的序列化数据
             logger.info(f"🎯 运行推理: {num_inference_steps}步, CFG={guidance_scale}")
-            logger.info(f"  • Workers: {len(self.workers)}")
-            logger.info(f"  • VAE: {'✅' if actual_vae is not None else '❌'}")
-            logger.info(f"  • CLIP: {'✅' if actual_clip is not None else '❌'}")
+            logger.info(f"  • Workers: {effective_workers}")
+            logger.info(f"  • VAE: {'✅' if comfyui_vae is not None else '❌'}")
+            logger.info(f"  • CLIP: {'✅' if comfyui_clip is not None else '❌'}")
 
-                        # 如果VAE和CLIP仍然为空，尝试调试
-            if actual_vae is None or actual_clip is None:
-                logger.warning("🔍 VAE/CLIP debugging:")
-                logger.warning(f"  • comfyui_vae parameter: {type(comfyui_vae) if comfyui_vae else 'None'}")
-                logger.warning(f"  • comfyui_clip parameter: {type(comfyui_clip) if comfyui_clip else 'None'}")
-                logger.warning(f"  • model_info keys: {list(model_info.keys())}")
-                logger.warning("  • Check your ComfyUI workflow connections!")
-            
-            # 🔧 将numpy数组转换回tensor（如果需要）
-            try:
-                if hasattr(latent_samples, 'numpy'):  # 检查是否是tensor
-                    # 已经是tensor，不需要转换
-                    pass
-                elif hasattr(latent_samples, 'shape'):  # 可能是numpy数组
-                    if isinstance(latent_samples, np.ndarray):
-                        latent_samples = torch.from_numpy(latent_samples)
-                        logger.info("🔧 Converted latent_samples back to tensor")
-            except Exception as e:
-                logger.warning(f"Warning: Could not process latent_samples: {e}")
-            
-            # 🔧 处理conditioning数据
-            try:
-                if conditioning_positive is not None and isinstance(conditioning_positive, list):
-                    if len(conditioning_positive) > 0 and isinstance(conditioning_positive[0], np.ndarray):
-                        conditioning_positive = [torch.from_numpy(p) for p in conditioning_positive]
-                        logger.info("🔧 Converted positive conditioning back to tensors")
-                
-                if conditioning_negative is not None and isinstance(conditioning_negative, list):
-                    if len(conditioning_negative) > 0 and isinstance(conditioning_negative[0], np.ndarray):
-                        conditioning_negative = [torch.from_numpy(n) for n in conditioning_negative]
-                        logger.info("🔧 Converted negative conditioning back to tensors")
-            except Exception as e:
-                logger.warning(f"Warning: Could not process conditioning: {e}")
-            
             # 选择worker
             worker = self.get_next_worker()
             if worker is None:
@@ -328,7 +324,7 @@ class XDiTDispatcher:
                 try:
                     result = ray.get(future, timeout=timeout)
                     if result is not None:
-                        logger.info("✅ Ray推理完成")
+                        logger.info(f"✅ {'Multi-GPU' if effective_workers > 1 else 'Single-GPU'} 推理完成")
                         return result
                     else:
                         logger.warning("⚠️ Ray推理返回None")
@@ -634,4 +630,75 @@ class XDiTDispatcher:
             logger.info("✅ XDiT Dispatcher cleaned up")
             
         except Exception as e:
-            logger.error(f"Error during dispatcher cleanup: {e}") 
+            logger.error(f"Error during dispatcher cleanup: {e}")
+
+    def _initialize_single_gpu(self):
+        """Initialize for single GPU mode"""
+        try:
+            logger.info("🔧 Single GPU initialization mode")
+            gpu_id = self.gpu_devices[0] if self.gpu_devices else 0
+            
+            if RAY_AVAILABLE:
+                worker = XDiTWorker.remote(
+                    gpu_id=gpu_id, 
+                    model_path=self.model_path, 
+                    strategy=self.strategy,
+                    master_addr=self.master_addr,
+                    master_port=self.master_port,
+                    world_size=1,  # 强制单GPU
+                    rank=0
+                )
+                
+                success = ray.get(worker.initialize.remote(), timeout=60)
+                if success:
+                    self.workers = [worker]
+                    self.worker_loads = {gpu_id: 0}
+                    self.is_initialized = True
+                    logger.info(f"✅ Single GPU worker initialized on GPU {gpu_id}")
+                    return True
+            else:
+                worker = XDiTWorkerFallback(gpu_id, self.model_path, self.strategy)
+                success = worker.initialize()
+                if success:
+                    self.workers = [worker]
+                    self.worker_loads = {gpu_id: 0}
+                    self.is_initialized = True
+                    logger.info(f"✅ Single GPU fallback worker initialized on GPU {gpu_id}")
+                    return True
+            
+            return False
+        except Exception as e:
+            logger.error(f"Single GPU initialization failed: {e}")
+            return False
+
+    def _fallback_to_single_gpu(self):
+        """Fallback to single GPU mode when distributed fails"""
+        try:
+            logger.info("🔄 Falling back to single GPU mode...")
+            
+            # 保留第一个worker，清理其他的
+            if len(self.workers) > 0:
+                primary_worker = self.workers[0]
+                primary_gpu = self.gpu_devices[0]
+                
+                # 清理其他workers
+                for worker in self.workers[1:]:
+                    try:
+                        if RAY_AVAILABLE and hasattr(worker, 'cleanup'):
+                            ray.get(worker.cleanup.remote())
+                    except:
+                        pass
+                
+                # 只保留主worker
+                self.workers = [primary_worker]
+                self.worker_loads = {primary_gpu: 0}
+                self.world_size = 1
+                
+                self.is_initialized = True
+                logger.info(f"✅ Fallback completed, using single GPU {primary_gpu}")
+                return True
+            
+            return False
+        except Exception as e:
+            logger.error(f"Fallback to single GPU failed: {e}")
+            return False 

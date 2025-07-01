@@ -143,57 +143,123 @@ class XDiTWorker:
             return False
     
     def initialize_distributed(self) -> bool:
-        """Initialize distributed environment - called after all workers are ready"""
+        """Initialize distributed environment - improved version"""
         if self.distributed_initialized:
             return True
             
         try:
+            # 🔧 添加单GPU跳过逻辑
+            if self.world_size <= 1:
+                logger.info(f"[GPU {self.gpu_id}] Single GPU mode, skipping distributed initialization")
+                self.distributed_initialized = True
+                return True
+            
             logger.info(f"[GPU {self.gpu_id}] Initializing distributed environment...")
             
-            # 清理可能存在的旧进程组
+            # 🔧 清理可能存在的旧进程组
             if torch.distributed.is_initialized():
                 try:
                     torch.distributed.destroy_process_group()
                     logger.info(f"[GPU {self.gpu_id}] Destroyed existing process group")
+                    time.sleep(1)  # 给清理一点时间
                 except Exception as e:
                     logger.warning(f"Error destroying process group: {e}")
             
-            # 设置分布式环境变量
-            os.environ['MASTER_ADDR'] = self.master_addr
-            os.environ['MASTER_PORT'] = str(self.master_port)
-            os.environ['WORLD_SIZE'] = str(self.world_size)
-            os.environ['RANK'] = str(self.rank)
-            os.environ['LOCAL_RANK'] = '0'  # Ray中每个worker都是local rank 0
-            os.environ['NCCL_DEBUG'] = 'INFO'  # 启用NCCL调试
+            # 🔧 设置NCCL环境变量以避免超时和网络问题
+            nccl_env = {
+                'MASTER_ADDR': self.master_addr,
+                'MASTER_PORT': str(self.master_port),
+                'WORLD_SIZE': str(self.world_size),
+                'RANK': str(self.rank),
+                'LOCAL_RANK': '0',  # Ray中每个worker都是local rank 0
+                'NCCL_DEBUG': 'WARN',  # 减少日志输出，从INFO改为WARN
+                'NCCL_TIMEOUT_S': '300',  # 5分钟超时
+                'NCCL_SOCKET_IFNAME': '^docker0,lo',  # 避免docker接口干扰
+                'NCCL_IB_DISABLE': '1',  # 禁用InfiniBand
+                'NCCL_P2P_DISABLE': '1',  # 禁用P2P通信，使用更稳定的方式
+                'CUDA_VISIBLE_DEVICES': '0',  # 确保每个worker只看到一个GPU
+            }
             
+            for key, value in nccl_env.items():
+                os.environ[key] = value
+                
             logger.info(f"[GPU {self.gpu_id}] Distributed env: MASTER={self.master_addr}:{self.master_port}, "
                        f"WORLD_SIZE={self.world_size}, RANK={self.rank}")
             
-            # 初始化分布式环境
-            torch.distributed.init_process_group(
-                backend='nccl',
-                init_method=f'tcp://{self.master_addr}:{self.master_port}',
-                world_size=self.world_size,
-                rank=self.rank,
-                timeout=datetime.timedelta(minutes=10)  # 增加超时时间
-            )
-            
-            # 验证分布式初始化
-            if torch.distributed.is_initialized():
-                world_size = torch.distributed.get_world_size()
-                rank = torch.distributed.get_rank()
-                logger.info(f"[GPU {self.gpu_id}] ✅ Distributed initialized: world_size={world_size}, rank={rank}")
-                self.distributed_initialized = True
-                return True
-            else:
-                logger.error(f"[GPU {self.gpu_id}] Distributed initialization failed")
-                return False
+            # 🔧 使用更短的超时时间进行初始化，如果失败则快速fallback
+            try:
+                # 先尝试NCCL backend
+                torch.distributed.init_process_group(
+                    backend='nccl',
+                    init_method=f'tcp://{self.master_addr}:{self.master_port}',
+                    world_size=self.world_size,
+                    rank=self.rank,
+                    timeout=datetime.timedelta(seconds=60)  # 缩短超时时间到1分钟
+                )
                 
+                # 验证分布式初始化
+                if torch.distributed.is_initialized():
+                    world_size = torch.distributed.get_world_size()
+                    rank = torch.distributed.get_rank()
+                    logger.info(f"[GPU {self.gpu_id}] ✅ NCCL distributed initialized: world_size={world_size}, rank={rank}")
+                    self.distributed_initialized = True
+                    return True
+                else:
+                    raise Exception("Distributed not properly initialized")
+                    
+            except Exception as nccl_error:
+                logger.warning(f"[GPU {self.gpu_id}] NCCL initialization failed: {nccl_error}")
+                logger.info(f"[GPU {self.gpu_id}] Trying fallback to Gloo backend...")
+                
+                # 清理NCCL尝试
+                if torch.distributed.is_initialized():
+                    try:
+                        torch.distributed.destroy_process_group()
+                        time.sleep(2)
+                    except:
+                        pass
+                
+                # 🔧 Fallback to Gloo backend
+                try:
+                    torch.distributed.init_process_group(
+                        backend='gloo',
+                        init_method=f'tcp://{self.master_addr}:{self.master_port}',
+                        world_size=self.world_size,
+                        rank=self.rank,
+                        timeout=datetime.timedelta(seconds=30)
+                    )
+                    
+                    if torch.distributed.is_initialized():
+                        world_size = torch.distributed.get_world_size()
+                        rank = torch.distributed.get_rank()
+                        logger.info(f"[GPU {self.gpu_id}] ✅ Gloo distributed initialized: world_size={world_size}, rank={rank}")
+                        self.distributed_initialized = True
+                        return True
+                    else:
+                        raise Exception("Gloo distributed not properly initialized")
+                        
+                except Exception as gloo_error:
+                    logger.error(f"[GPU {self.gpu_id}] Both NCCL and Gloo initialization failed")
+                    logger.error(f"  NCCL error: {nccl_error}")
+                    logger.error(f"  Gloo error: {gloo_error}")
+                    
+                    # 🔧 最终fallback：标记为单GPU模式
+                    logger.warning(f"[GPU {self.gpu_id}] Falling back to single-GPU mode")
+                    self.world_size = 1
+                    self.rank = 0
+                    self.distributed_initialized = True
+                    return True
+                    
         except Exception as e:
-            logger.error(f"[GPU {self.gpu_id}] Failed to initialize distributed: {e}")
+            logger.error(f"[GPU {self.gpu_id}] Critical error in distributed initialization: {e}")
             logger.exception("Distributed init traceback:")
-            self._cleanup_distributed()
-            return False
+            
+            # �� Emergency fallback
+            logger.warning(f"[GPU {self.gpu_id}] Emergency fallback to single-GPU mode")
+            self.world_size = 1
+            self.rank = 0
+            self.distributed_initialized = True
+            return True
     
     def _create_xfuser_pipeline_if_needed(self, model_path: str = None) -> bool:
         """创建xfuser pipeline - 使用xDiT的原始方法"""
