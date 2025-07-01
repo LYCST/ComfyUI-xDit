@@ -536,14 +536,22 @@ class XDiTDispatcher:
             # 使用新的load_model方法
             futures = []
             for worker in self.workers.values():
-                future = worker.load_model.remote(model_path, model_type)
-                futures.append(future)
+                if RAY_AVAILABLE:
+                    future = worker.load_model.remote(model_path, model_type)
+                    futures.append(future)
+                else:
+                    # Fallback模式直接调用
+                    result = worker.load_model(model_path, model_type)
+                    futures.append(('direct', result))
             
             logger.info("⏳ Initializing workers with intelligent component reuse...")
             
             # 等待所有worker完成加载 - 对于safetensors应该很快
             timeout = 300 if model_path.endswith('.safetensors') else 1800  # safetensors: 5分钟, diffusers: 30分钟
-            results = ray.get(futures, timeout=timeout)
+            if RAY_AVAILABLE:
+                results = ray.get(futures, timeout=timeout)
+            else:
+                results = [f[1] for f in futures]  # 提取结果
             
             # 分析结果
             success_count = sum(1 for r in results if r == "success")
