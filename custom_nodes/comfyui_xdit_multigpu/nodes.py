@@ -670,7 +670,7 @@ class XDiTKSampler:
             return None
              
     def _run_xdit_with_timeout(self, dispatcher, model_info, positive, negative, latent_samples, steps, cfg, seed, timeout_seconds, vae=None, clip=None):
-        """运行xDiT推理，带超时控制 - 修复VAE作用域"""
+        """运行xDiT推理，带超时控制 - 确保返回tensor"""
         import threading
         import queue
         
@@ -679,35 +679,6 @@ class XDiTKSampler:
         
         def inference_worker():
             try:
-                # 🔧 关键修复：将conditioning数据转换为可序列化格式
-                serializable_positive = None
-                serializable_negative = None
-
-                # 处理positive conditioning
-                if positive is not None:
-                    if isinstance(positive, (list, tuple)) and len(positive) > 0:
-                        # 如果是tensor，转换为基本数据类型
-                        if hasattr(positive[0], 'cpu'):
-                            serializable_positive = [p.cpu().detach().numpy() if hasattr(p, 'cpu') else p for p in positive]
-                        else:
-                            serializable_positive = list(positive)
-                
-                # 处理negative conditioning
-                if negative is not None:
-                    if isinstance(negative, (list, tuple)) and len(negative) > 0:
-                        if hasattr(negative[0], 'cpu'):
-                            serializable_negative = [n.cpu().detach().numpy() if hasattr(n, 'cpu') else n for n in negative]
-                        else:
-                            serializable_negative = list(negative)
-                
-                # 🔧 将latent_samples转换为numpy数组（如果是tensor）
-                if hasattr(latent_samples, 'cpu'):
-                    serializable_latents = latent_samples.cpu().detach().numpy()
-                else:
-                    serializable_latents = latent_samples
-                
-                logger.info("🔧 Converted data to serializable format for Ray")
-
                 result = dispatcher.run_inference(
                     model_info=model_info,
                     conditioning_positive=positive,
@@ -716,9 +687,21 @@ class XDiTKSampler:
                     num_inference_steps=steps,
                     guidance_scale=cfg,
                     seed=seed,
-                    comfyui_vae=vae,  # 🔧 使用参数传递的VAE
-                    comfyui_clip=clip  # 🔧 使用参数传递的CLIP
+                    comfyui_vae=vae,
+                    comfyui_clip=clip
                 )
+                
+                # 🔧 关键修复：确保结果是tensor
+                if result is not None:
+                    if isinstance(result, np.ndarray):
+                        result = torch.from_numpy(result)
+                        logger.info(f"🔧 Converted final result from numpy to tensor: {result.shape}")
+                    elif isinstance(result, torch.Tensor):
+                        logger.info(f"✅ Final result is tensor: {result.shape}")
+                    else:
+                        logger.error(f"❌ Unexpected final result type: {type(result)}")
+                        result = None
+                
                 result_queue.put(('success', result))
             except Exception as e:
                 result_queue.put(('error', str(e)))
@@ -732,7 +715,15 @@ class XDiTKSampler:
         try:
             status, result = result_queue.get(timeout=timeout_seconds)
             if status == 'success':
-                return result
+                # 🔧 最终检查：确保返回给ComfyUI的是tensor
+                if result is not None and isinstance(result, torch.Tensor):
+                    logger.info(f"✅ Returning tensor to ComfyUI: {result.shape}, dtype: {result.dtype}")
+                    return result
+                elif result is not None:
+                    logger.error(f"❌ Final result is not tensor: {type(result)}")
+                    return None
+                else:
+                    return None
             else:
                 logger.error(f"推理线程错误: {result}")
                 return None

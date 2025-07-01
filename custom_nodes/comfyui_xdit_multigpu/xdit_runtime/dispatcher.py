@@ -271,13 +271,13 @@ class XDiTDispatcher:
     def run_inference(self, model_info, conditioning_positive, conditioning_negative, 
                      latent_samples, num_inference_steps=20, guidance_scale=8.0, seed=42, 
                      comfyui_vae=None, comfyui_clip=None) -> Optional[torch.Tensor]:
-        """改进的推理方法 - 带分布式状态检查"""
+        """改进的推理方法 - 确保返回torch tensor"""
         try:
             if not self.is_initialized or not self.workers:
                 logger.error("Dispatcher未初始化")
                 return None
 
-            # 🔧 检查分布式状态
+            # 检查分布式状态
             effective_workers = len(self.workers)
             if effective_workers == 1:
                 logger.info(f"🔧 Running in single-GPU mode")
@@ -299,6 +299,11 @@ class XDiTDispatcher:
             logger.info(f"  • Workers: {effective_workers}")
             logger.info(f"  • VAE: {'✅' if comfyui_vae is not None else '❌'}")
             logger.info(f"  • CLIP: {'✅' if comfyui_clip is not None else '❌'}")
+
+            # 🔧 确保latent_samples是tensor格式
+            if isinstance(latent_samples, np.ndarray):
+                latent_samples = torch.from_numpy(latent_samples)
+                logger.info(f"🔧 Converted input latents from numpy to tensor")
 
             # 选择worker
             worker = self.get_next_worker()
@@ -324,6 +329,16 @@ class XDiTDispatcher:
                 try:
                     result = ray.get(future, timeout=timeout)
                     if result is not None:
+                        # 🔧 关键修复：确保返回的是torch tensor
+                        if isinstance(result, np.ndarray):
+                            result = torch.from_numpy(result)
+                            logger.info(f"🔧 Converted Ray result from numpy to tensor: {result.shape}")
+                        elif isinstance(result, torch.Tensor):
+                            logger.info(f"✅ Ray result is already tensor: {result.shape}")
+                        else:
+                            logger.error(f"❌ Unexpected result type from Ray: {type(result)}")
+                            return None
+                        
                         logger.info(f"✅ {'Multi-GPU' if effective_workers > 1 else 'Single-GPU'} 推理完成")
                         return result
                     else:
@@ -345,6 +360,16 @@ class XDiTDispatcher:
                 )
                 
                 if result is not None:
+                    # 🔧 关键修复：确保返回的是torch tensor
+                    if isinstance(result, np.ndarray):
+                        result = torch.from_numpy(result)
+                        logger.info(f"🔧 Converted fallback result from numpy to tensor: {result.shape}")
+                    elif isinstance(result, torch.Tensor):
+                        logger.info(f"✅ Fallback result is already tensor: {result.shape}")
+                    else:
+                        logger.error(f"❌ Unexpected result type from fallback: {type(result)}")
+                        return None
+                    
                     logger.info("✅ Fallback推理完成")
                     return result
                 else:

@@ -254,7 +254,7 @@ class XDiTWorker:
             logger.error(f"[GPU {self.gpu_id}] Critical error in distributed initialization: {e}")
             logger.exception("Distributed init traceback:")
             
-            # �� Emergency fallback
+            # 🔧 Emergency fallback
             logger.warning(f"[GPU {self.gpu_id}] Emergency fallback to single-GPU mode")
             self.world_size = 1
             self.rank = 0
@@ -918,7 +918,7 @@ class XDiTWorker:
                      num_inference_steps: int = 20,
                      guidance_scale: float = 8.0,
                      seed: int = 42) -> Optional[torch.Tensor]:
-        """运行真正的xDiT推理"""
+        """运行真正的xDiT推理 - 修复返回类型"""
         try:
             # 初始化检查
             if not self.is_initialized:
@@ -947,10 +947,28 @@ class XDiTWorker:
             torch.cuda.manual_seed(seed)
             
             # 🎯 关键：尝试实际的xDiT推理
-            return self._run_xdit_inference(
+            result = self._run_xdit_inference(
                 model_info, conditioning_positive, conditioning_negative,
                 latent_samples, num_inference_steps, guidance_scale, seed
             )
+            
+            # 🔧 关键修复：确保返回的是torch tensor而不是numpy array
+            if result is not None:
+                if isinstance(result, np.ndarray):
+                    # 转换numpy数组为torch tensor
+                    result_tensor = torch.from_numpy(result)
+                    logger.info(f"🔧 [GPU {self.gpu_id}] Converted numpy result to torch tensor: {result_tensor.shape}")
+                    return result_tensor
+                elif isinstance(result, torch.Tensor):
+                    # 已经是tensor，直接返回
+                    logger.info(f"✅ [GPU {self.gpu_id}] Returning torch tensor: {result.shape}")
+                    return result
+                else:
+                    logger.warning(f"⚠️ [GPU {self.gpu_id}] Unexpected result type: {type(result)}")
+                    return None
+            else:
+                logger.warning(f"⚠️ [GPU {self.gpu_id}] Inference returned None")
+                return None
             
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] Inference error: {e}")
@@ -1083,22 +1101,23 @@ class XDiTWorker:
             return self._generate_mock_result(latents)
     
     def _generate_mock_result(self, latents):
-        """生成基础mock结果用于测试"""
+        """生成基础mock结果用于测试 - 返回torch tensor"""
         try:
             logger.info(f"🎭 [GPU {self.gpu_id}] Generating mock result")
             
             # 创建一个与输入相同形状的随机latent
             mock_result = torch.randn_like(latents, device=self.device)
             
-            # 转换为numpy用于序列化
-            return mock_result.cpu().detach().numpy()
+            # 🔧 关键修复：返回tensor而不是numpy
+            logger.info(f"🎭 [GPU {self.gpu_id}] Mock result shape: {mock_result.shape}, type: {type(mock_result)}")
+            return mock_result  # 直接返回tensor
             
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] Failed to generate mock result: {e}")
             return None
     
     def _generate_enhanced_mock_result(self, latents, steps, seed):
-        """生成增强的mock结果"""
+        """生成增强的mock结果 - 返回torch tensor"""
         try:
             logger.info(f"🎭 [GPU {self.gpu_id}] Generating enhanced mock result with seed {seed}")
             
@@ -1114,10 +1133,10 @@ class XDiTWorker:
                 noise = torch.randn_like(mock_result, device=self.device) * noise_scale
                 mock_result = mock_result * 0.9 + noise * 0.1
             
-            logger.info(f"✅ [GPU {self.gpu_id}] Enhanced mock result generated")
+            logger.info(f"✅ [GPU {self.gpu_id}] Enhanced mock result generated: {mock_result.shape}, type: {type(mock_result)}")
             
-            # 转换为numpy
-            return mock_result.cpu().detach().numpy()
+            # 🔧 关键修复：返回tensor而不是numpy
+            return mock_result  # 直接返回tensor
             
         except Exception as e:
             logger.error(f"❌ [GPU {self.gpu_id}] Enhanced mock generation failed: {e}")
