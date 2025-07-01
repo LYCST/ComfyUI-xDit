@@ -178,16 +178,66 @@ class XDiTDispatcher:
             
             if RAY_AVAILABLE:
                 # 使用Ray Actor
-                for gpu_id in self.gpu_devices:
-                    worker = XDiTWorker.remote(gpu_id, self.model_path, self.strategy)
-                    self.workers.append(worker)
-                    self.worker_loads[gpu_id] = 0
+                worker_futures = []
+
+                for i, gpu_id in enumerate(self.gpu_devices):
+                    try:
+                         # 创建Ray worker
+                        worker = XDiTWorker.remote(
+                            gpu_id=gpu_id, 
+                            model_path=self.model_path, 
+                            strategy=self.strategy,
+                            master_addr=self.master_addr,
+                            master_port=self.master_port,
+                            world_size=self.world_size,
+                            rank=i
+                        )
+                        self.workers.append(worker)
+                        self.worker_loads[gpu_id] = 0
+                        
+                        # 🔧 关键修复：调用worker的initialize方法
+                        future = worker.initialize.remote()
+                        worker_futures.append((gpu_id, worker, future))
+                        
+                        logger.info(f"📦 Created Ray worker for GPU {gpu_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to create worker for GPU {gpu_id}: {e}")
+                        return False
+
+                # 等待所有worker初始化完成
+                logger.info("⏳ Waiting for all workers to initialize...")
+                
+                for gpu_id, worker, future in worker_futures:
+                    try:
+                        success = ray.get(future, timeout=60)
+                        if success:
+                            logger.info(f"✅ Worker {gpu_id} initialized successfully")
+                        else:
+                            logger.error(f"❌ Worker {gpu_id} initialization failed")
+                            return False
+                    except Exception as e:
+                        logger.error(f"❌ Worker {gpu_id} initialization error: {e}")
+                        return False
+                
+                logger.info(f"✅ All {len(self.workers)} Ray workers initialized")
             else:
-                # 使用fallback worker
+                 # 使用fallback worker
                 for gpu_id in self.gpu_devices:
-                    worker = XDiTWorkerFallback(gpu_id, self.model_path, self.strategy)
-                    self.workers.append(worker)
-                    self.worker_loads[gpu_id] = 0
+                    try:
+                        worker = XDiTWorkerFallback(gpu_id, self.model_path, self.strategy)
+                        success = worker.initialize()
+                        
+                        if success:
+                            self.workers.append(worker)
+                            self.worker_loads[gpu_id] = 0
+                            logger.info(f"✅ Fallback worker {gpu_id} initialized")
+                        else:
+                            logger.error(f"❌ Fallback worker {gpu_id} initialization failed")
+                            return False
+                            
+                    except Exception as e:
+                        logger.error(f"❌ Failed to create fallback worker for GPU {gpu_id}: {e}")
+                        return False
             
             self.is_initialized = True
             logger.info(f"✅ Initialized {len(self.workers)} workers")
