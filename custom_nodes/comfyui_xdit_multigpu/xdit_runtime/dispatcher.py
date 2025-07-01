@@ -12,6 +12,7 @@ import os
 from typing import Dict, Any, Optional, List, Tuple
 from enum import Enum
 import torch
+import numpy as np
 
 # Try to import Ray
 try:
@@ -296,10 +297,37 @@ class XDiTDispatcher:
                 'comfyui_mode': True
             })
             
+            # 🔧 处理从KSampler传来的序列化数据
             logger.info(f"🎯 运行推理: {num_inference_steps}步, CFG={guidance_scale}")
             logger.info(f"  • Workers: {len(self.workers)}")
             logger.info(f"  • VAE: {'✅' if comfyui_vae else '❌'}")
             logger.info(f"  • CLIP: {'✅' if comfyui_clip else '❌'}")
+            
+            # 🔧 将numpy数组转换回tensor（如果需要）
+            try:
+                if hasattr(latent_samples, 'numpy'):  # 检查是否是tensor
+                    # 已经是tensor，不需要转换
+                    pass
+                elif hasattr(latent_samples, 'shape'):  # 可能是numpy数组
+                    if isinstance(latent_samples, np.ndarray):
+                        latent_samples = torch.from_numpy(latent_samples)
+                        logger.info("🔧 Converted latent_samples back to tensor")
+            except Exception as e:
+                logger.warning(f"Warning: Could not process latent_samples: {e}")
+            
+            # 🔧 处理conditioning数据
+            try:
+                if conditioning_positive is not None and isinstance(conditioning_positive, list):
+                    if len(conditioning_positive) > 0 and isinstance(conditioning_positive[0], np.ndarray):
+                        conditioning_positive = [torch.from_numpy(p) for p in conditioning_positive]
+                        logger.info("🔧 Converted positive conditioning back to tensors")
+                
+                if conditioning_negative is not None and isinstance(conditioning_negative, list):
+                    if len(conditioning_negative) > 0 and isinstance(conditioning_negative[0], np.ndarray):
+                        conditioning_negative = [torch.from_numpy(n) for n in conditioning_negative]
+                        logger.info("🔧 Converted negative conditioning back to tensors")
+            except Exception as e:
+                logger.warning(f"Warning: Could not process conditioning: {e}")
             
             # 选择worker
             worker = self.get_next_worker()
@@ -355,7 +383,7 @@ class XDiTDispatcher:
         except Exception as e:
             logger.error(f"推理执行失败: {e}")
             logger.exception("推理错误:")
-            return None 
+            return None
 
     def get_next_worker(self) -> Optional[Any]:
         """Get next worker based on scheduling strategy"""

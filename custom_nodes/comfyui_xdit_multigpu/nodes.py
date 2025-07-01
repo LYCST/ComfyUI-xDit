@@ -589,16 +589,22 @@ class XDiTKSampler:
                 logger.error(f"❌ 模型文件不存在: {model_path}")
                 return None
             
-            # 构建模型信息
+            # 🔧 关键修复：构建只包含可序列化数据的模型信息
             model_info = {
                 'path': model_path,
                 'type': 'flux',
-                'vae': vae,
-                'clip': clip,
-                'model_object': model,
-                'dispatcher': xdit_dispatcher
+                # ❌ 不传递原始对象，因为它们包含不可序列化的线程锁
+                # 'vae': vae,  
+                # 'clip': clip,
+                # 'model_object': model,
+                # 'dispatcher': xdit_dispatcher
+                
+                # ✅ 只传递基本信息和路径
+                'vae_available': vae is not None,
+                'clip_available': clip is not None,
+                'model_type_info': str(type(model)),
+                'comfyui_mode': True  # 标记这是ComfyUI模式
             }
-            
             logger.info(f"✅ Model info prepared successfully!")
             logger.info(f"📁 Final model path: {model_path}")
             return model_info
@@ -618,6 +624,35 @@ class XDiTKSampler:
         
         def inference_worker():
             try:
+                # 🔧 关键修复：将conditioning数据转换为可序列化格式
+                serializable_positive = None
+                serializable_negative = None
+
+                # 处理positive conditioning
+                if positive is not None:
+                    if isinstance(positive, (list, tuple)) and len(positive) > 0:
+                        # 如果是tensor，转换为基本数据类型
+                        if hasattr(positive[0], 'cpu'):
+                            serializable_positive = [p.cpu().detach().numpy() if hasattr(p, 'cpu') else p for p in positive]
+                        else:
+                            serializable_positive = list(positive)
+                
+                # 处理negative conditioning
+                if negative is not None:
+                    if isinstance(negative, (list, tuple)) and len(negative) > 0:
+                        if hasattr(negative[0], 'cpu'):
+                            serializable_negative = [n.cpu().detach().numpy() if hasattr(n, 'cpu') else n for n in negative]
+                        else:
+                            serializable_negative = list(negative)
+                
+                # 🔧 将latent_samples转换为numpy数组（如果是tensor）
+                if hasattr(latent_samples, 'cpu'):
+                    serializable_latents = latent_samples.cpu().detach().numpy()
+                else:
+                    serializable_latents = latent_samples
+                
+                logger.info("🔧 Converted data to serializable format for Ray")
+
                 result = dispatcher.run_inference(
                     model_info=model_info,
                     conditioning_positive=positive,
